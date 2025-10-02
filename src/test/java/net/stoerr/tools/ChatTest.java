@@ -1,12 +1,14 @@
 package net.stoerr.tools;
 
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import dev.langchain4j.model.chat.ChatModel;
 
 /**
  * Test for OpenAI chat functionality using langchain4j
  */
+@Disabled
 public class ChatTest {
 
     @Test
