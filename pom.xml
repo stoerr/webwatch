@@ -1,156 +1,70 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
 
-  <groupId>net.stoerr.tools</groupId>
-  <artifactId>webwatch</artifactId>
-  <version>1.0-SNAPSHOT</version>
+    <groupId>net.stoerr.tools</groupId>
+    <artifactId>webwatch</artifactId>
+    <version>1.0-SNAPSHOT</version>
 
-  <name>webwatch</name>
-  <description>A simple webwatch.</description>
-  <!-- FIXME change it to the project's website -->
-  <url>http://www.example.com</url>
+    <name>webwatch</name>
+    <description>A simple webwatch.</description>
 
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <!-- Updated Java version to 17 because langchain4j requires a modern Java runtime -->
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
-    <!-- Note: langchain4j versions will be managed by the BOM in dependencyManagement -->
-  </properties>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>23</maven.compiler.source>
+        <maven.compiler.target>23</maven.compiler.target>
+        <junit.jupiter.version>5.14.0</junit.jupiter.version>
+    </properties>
 
-  <dependencyManagement>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-bom</artifactId>
+                <version>1.7.1</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
-      <!-- Use the langchain4j BOM to manage consistent versions for langchain4j modules -->
-      <dependency>
-        <groupId>dev.langchain4j</groupId>
-        <artifactId>langchain4j-bom</artifactId>
-        <version>1.7.1</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-agentic</artifactId>
+        </dependency>
+
+        <!-- JUnit (Jupiter) for testing -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
-  </dependencyManagement>
 
-  <dependencies>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.13.2</version>
-      <scope>test</scope>
-    </dependency>
-
-    <!-- LangChain4j core (bom-managed version) -->
-    <dependency>
-      <groupId>dev.langchain4j</groupId>
-      <artifactId>langchain4j-core</artifactId>
-    </dependency>
-
-    <!-- LangChain4j OpenAI interface -->
-    <dependency>
-      <groupId>dev.langchain4j</groupId>
-      <artifactId>langchain4j-open-ai</artifactId>
-    </dependency>
-
-    <!-- Agentic / RAG helper module (provides easy agent-like workflows) -->
-    <dependency>
-      <groupId>dev.langchain4j</groupId>
-      <artifactId>langchain4j-easy-rag</artifactId>
-    </dependency>
-
-    <!-- Example embeddings provider (optional) -->
-    <dependency>
-      <groupId>dev.langchain4j</groupId>
-      <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-    </dependency>
-
-    <!-- Simple SLF4J implementation for development/logging (replace with your preferred logger) -->
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
-      <version>2.0.7</version>
-      <scope>runtime</scope>
-    </dependency>
-  </dependencies>
-
-  <build>
-    <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->
-      <plugins>
-        <plugin>
-          <artifactId>maven-clean-plugin</artifactId>
-          <version>3.5.0</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-site-plugin</artifactId>
-          <version>3.21.0</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-project-info-reports-plugin</artifactId>
-          <version>3.9.0</version>
-        </plugin>
-        <!-- see http://maven.apache.org/ref/current/maven-core/default-bindings.html#Plugin_bindings_for_jar_packaging -->
-        <plugin>
-          <artifactId>maven-resources-plugin</artifactId>
-          <version>3.3.1</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.14.1</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.5.4</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-jar-plugin</artifactId>
-          <version>3.4.2</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-install-plugin</artifactId>
-          <version>3.1.4</version>
-        </plugin>
-        <plugin>
-          <artifactId>maven-deploy-plugin</artifactId>
-          <version>3.1.4</version>
-        </plugin>
-      </plugins>
-    </pluginManagement>
-
-    <!-- Add enforcer plugin to require a minimum Maven version (as reported by versions:display-plugin-updates) -->
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-enforcer-plugin</artifactId>
-        <version>3.6.2</version>
-        <executions>
-          <execution>
-            <id>enforce-maven</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <configuration>
-              <rules>
-                <requireMavenVersion>
-                  <version>[3.6.3,)</version>
-                </requireMavenVersion>
-              </rules>
-              <fail>true</fail>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-    </plugins>
-  </build>
-
-  <reporting>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-project-info-reports-plugin</artifactId>
-        <version>3.9.0</version>
-      </plugin>
-    </plugins>
-  </reporting>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.1.2</version>
+                <configuration>
+                    <useModulePath>false</useModulePath>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>
