@@ -1,114 +1,121 @@
 package net.stoerr.tools;
 
-import dev.langchain4j.model.openai.OpenAiChatModel;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Attribute;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
+import java.lang.reflect.Type;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Class to retrieve HTML from Dresden Tango calendar and extract concert information using OpenAI
+ * Class to retrieve HTML from Dresden Tango calendar and extract concert information using OpenAI.
+ * We write the concerts we have already alerted the user into a file "tango-concerts-seen.txt"
+ * and read it on the next run to avoid duplicate alerts.
  */
 public class PrintTangoConcerts {
 
     private static final String TANGO_URL = "https://www.dresden-tango.de/html/ifkalender.html";
-    private static final String MODEL_NAME = "gpt-4.1"; // "gpt-4o-search-preview";
+    private static final String MODEL_NAME = "gpt-4o-search-preview";
+    private static final String SEEN_CONCERTS_FILE = "data/tango-concerts-seen.json";
+    private static final String SEEN_CONCERTS_FILE_NEW = "data/tango-concerts-seen-new.json";
 
-    public static void main(String[] args) {
-        PrintTangoConcerts extractor = new PrintTangoConcerts();
-        extractor.extractAndPrintConcerts();
-    }
+    public static void main(String[] args) throws Exception {
+        int returncode = 0;
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        Type concertListType = new TypeToken<ConcertList>() {}.getType();
 
-    public void extractAndPrintConcerts() {
+        ConcertList oldConcerts = new ConcertList(new ArrayList<>());
+        // read old concerts from file (JSON object with 'concerts' field)
         try {
-            // Retrieve HTML content
-            String htmlContent = retrieveHtmlContent(TANGO_URL);
-
-            // Process with OpenAI
-            String concerts = extractConcertsWithAI(htmlContent);
-
-            // Print results
-            System.out.println("Tango Concerts from Dresden Tango Calendar:");
-            System.out.println("=".repeat(50));
-            System.out.println(concerts);
-
+            String oldJson = Files.readString(Path.of(SEEN_CONCERTS_FILE));
+            ConcertList parsed = gson.fromJson(oldJson, concertListType);
+            if (parsed != null) oldConcerts = parsed;
         } catch (Exception e) {
-            System.err.println("Error extracting tango concerts: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Retrieves HTML content from the given URL using java.net.http.HttpClient
-     */
-    private String retrieveHtmlContent(String url) throws IOException, InterruptedException {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(30))
-                .build();
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                .timeout(Duration.ofSeconds(30))
-                .GET()
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() != 200) {
-            throw new IOException("HTTP request failed with status code: " + response.statusCode());
+            System.out.println("No previous concerts file found, starting fresh. " + e);
         }
 
-        String content = response.body();
-        System.out.println("Successfully retrieved HTML content (" + content.length() + " characters)");
-        return content;
-    }
+        try (var in = new URL(TANGO_URL).openStream()) {
+            String htmlContent = new String(in.readAllBytes());
 
-    /**
-     * Uses OpenAI to extract concert information from HTML content
-     */
-    private String extractConcertsWithAI(String htmlContent) {
-        String apiKey = System.getenv("OPENAI_API_KEY");
-        if (apiKey == null || apiKey.trim().isEmpty()) {
-            throw new RuntimeException("OPENAI_API_KEY environment variable is not set");
+            ChatModel chatModel = OpenAiChatModel.builder()
+                    .apiKey(System.getenv("OPENAI_API_KEY"))
+                    .modelName(MODEL_NAME)
+                    .build();
+
+            // Use jsoup to parse the HTML and remove all attributes from all elements.
+            Document doc = Jsoup.parse(htmlContent, TANGO_URL);
+            for (Element el : doc.getAllElements()) {
+                // copy attribute list to avoid concurrent modification
+                List<Attribute> attrs = new ArrayList<>(el.attributes().asList());
+                for (Attribute a : attrs) {
+                    el.removeAttr(a.getKey());
+                }
+            }
+            // Use the cleaned HTML (outerHtml includes the document structure)
+            htmlContent = doc.outerHtml();
+
+            ConcertExtractor extractor = AiServices.builder(ConcertExtractor.class).chatModel(chatModel).build();
+
+            // Extract concerts as a ConcertList
+            ConcertList currentConcerts = extractor.extractConcerts(htmlContent);
+
+            // Determine new concerts that were not in the old concerts
+            ConcertList newConcertsOnly = extractor.newConcertsOnly(currentConcerts, oldConcerts);
+
+            System.out.println("New Concerts Since Last Check:");
+            if (newConcertsOnly == null || newConcertsOnly.concerts() == null || newConcertsOnly.concerts().isEmpty()) {
+                // no output
+                returncode = 1;
+            } else {
+                // print it neatly human readable
+                for (Concert c : newConcertsOnly.concerts()) {
+                    System.out.println(c.date() + " " + c.time());
+                    System.out.println("    " + c.description());
+                    System.out.println("    " + c.location());
+                    System.out.println("    " + c.link());
+                }
+            }
+
+            // Write the current concerts to the file for next time as JSON (wrapped as ConcertList)
+            ConcertList forWrite = currentConcerts != null ? currentConcerts : new ConcertList(new ArrayList<>());
+            String currentJson = gson.toJson(forWrite);
+            Files.writeString(Path.of(SEEN_CONCERTS_FILE_NEW), currentJson);
         }
-
-        ChatModel chatModel = OpenAiChatModel.builder()
-                .apiKey(apiKey)
-                .modelName(MODEL_NAME)
-                .build();
-
-        String prompt = buildPrompt(htmlContent);
-
-        System.out.println("Sending request to OpenAI...");
-        String response = chatModel.chat(prompt);
-
-        return response;
+        System.exit(returncode);
     }
 
-    /**
-     * Builds the prompt for OpenAI to extract tango concert information
-     */
-    private String buildPrompt(String htmlContent) {
-        return String.format("""
-            Please analyze the following HTML content from a Dresden Tango calendar website and extract all tango concerts/events.
-            
-            For each concert/event, please provide:
-            - Date and time
-            - Event name/title
-            - Location/venue
-            - Artists/performers (if mentioned)
-            - Any additional relevant details
-            
-            Please format the output in a clear, readable way with each concert as a separate entry.
-            Focus only on actual tango concerts, performances, or musical events - ignore general dance classes or social events unless they specifically mention live music or concerts.
-            
-            HTML Content:
-            %s
-            """, htmlContent);
+    public record Concert(String date, String time, String description, String location, String link) {
     }
+
+    public record ConcertList(List<Concert> concerts) {
+    }
+
+    private interface ConcertExtractor {
+        @SystemMessage("Extract all concerts from the given HTML. " +
+                "Return a JSON-serializable ConcertList record with field 'concerts' containing Concert objects (date, time, description, location, link). " +
+                "Only mention concerts, no other events like Milongas or Praktika.")
+        ConcertList extractConcerts(String html);
+
+        @SystemMessage("Given two ConcertList objects 'current' and 'old', return only those concerts from 'current' that are not in 'old'. " +
+                "If there are no new concerts, return an empty ConcertList with an empty 'concerts' list.")
+        @UserMessage("Current concerts (as JSON):\n{{current}}\n\nOld concerts (as JSON):\n{{old}}\n\nReturn only the new concerts as a JSON ConcertList object.")
+        ConcertList newConcertsOnly(@V("current") ConcertList current, @V("old") ConcertList old);
+    }
+
+
 }

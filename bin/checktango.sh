@@ -7,7 +7,7 @@ set -u
 
 # Resolve script directory (so this script works when run from elsewhere)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-JAR="$DIR/../target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar"
+JAR="$DIR/../bin/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar"
 
 if [[ ! -f "$JAR" ]]; then
   echo "Jar not found: $JAR" >&2
@@ -37,10 +37,6 @@ fi
 
 # Pipe the captured output to sendmailtome.sh with the requested subject.
 # Use bash to execute the script if it's not executable.
-if [[ -x "$SENDMAIL_SCRIPT" ]]; then
-  cat "$TMPOUT" | "$SENDMAIL_SCRIPT" "new tango concerts"
-  exit $?
-else
-  cat "$TMPOUT" | bash "$SENDMAIL_SCRIPT" "new tango concerts"
-  exit $?
-fi
+cat "$TMPOUT" | "$SENDMAIL_SCRIPT" "new tango concerts"
+mv -f data/tango-concerts-seen-new.json data/tango-concerts-seen.json
+exit $?
