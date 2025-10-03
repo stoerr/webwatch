@@ -7,7 +7,7 @@ set -u
 
 # Resolve script directory (so this script works when run from elsewhere)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-JAR="$DIR/../bin/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar"
+JAR="$DIR/../target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar"
 
 if [[ ! -f "$JAR" ]]; then
   echo "Jar not found: $JAR" >&2
