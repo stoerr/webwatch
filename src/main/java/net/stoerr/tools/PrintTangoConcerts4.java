@@ -10,6 +10,11 @@ import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Attribute;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+
 import java.lang.reflect.Type;
 import java.net.URL;
 import java.nio.file.Files;
@@ -52,9 +57,17 @@ public class PrintTangoConcerts4 {
                     .modelName(MODEL_NAME)
                     .build();
 
-            htmlContent = htmlContent
-                    .replaceAll("(?i)style=\"[^\"]*\"", "")
-                    .replaceAll("(?i)class=\"[^\"]*\"", "");
+            // Use jsoup to parse the HTML and remove all attributes from all elements.
+            Document doc = Jsoup.parse(htmlContent, TANGO_URL);
+            for (Element el : doc.getAllElements()) {
+                // copy attribute list to avoid concurrent modification
+                List<Attribute> attrs = new ArrayList<>(el.attributes().asList());
+                for (Attribute a : attrs) {
+                    el.removeAttr(a.getKey());
+                }
+            }
+            // Use the cleaned HTML (outerHtml includes the document structure)
+            htmlContent = doc.outerHtml();
 
             ConcertExtractor extractor = AiServices.builder(ConcertExtractor.class).chatModel(chatModel).build();
 
