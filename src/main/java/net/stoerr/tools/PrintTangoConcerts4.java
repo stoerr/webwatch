@@ -1,6 +1,7 @@
 package net.stoerr.tools;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
@@ -24,22 +25,23 @@ import java.util.List;
 public class PrintTangoConcerts4 {
 
     private static final String TANGO_URL = "https://www.dresden-tango.de/html/ifkalender.html";
-    private static final String MODEL_NAME = "gpt-4.1"; // "gpt-4o-search-preview";
+    private static final String MODEL_NAME = "gpt-4o-search-preview";
     private static final String SEEN_CONCERTS_FILE = "data/tango-concerts-seen.json";
     private static final String SEEN_CONCERTS_FILE_NEW = "data/tango-concerts-seen-new.json";
 
     public static void main(String[] args) throws Exception {
-        Gson gson = new Gson();
-        Type concertListType = new TypeToken<List<Concert>>() {}.getType();
+        int returncode = 0;
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        Type concertListType = new TypeToken<ConcertList>() {}.getType();
 
-        List<Concert> oldConcerts = new ArrayList<>();
-        // read old concerts from file (JSON list)
+        ConcertList oldConcerts = new ConcertList(new ArrayList<>());
+        // read old concerts from file (JSON object with 'concerts' field)
         try {
             String oldJson = Files.readString(Path.of(SEEN_CONCERTS_FILE));
-            oldConcerts = gson.fromJson(oldJson, concertListType);
-            if (oldConcerts == null) oldConcerts = new ArrayList<>();
+            ConcertList parsed = gson.fromJson(oldJson, concertListType);
+            if (parsed != null) oldConcerts = parsed;
         } catch (Exception e) {
-            System.out.println("No previous concerts file found, starting fresh.");
+            System.out.println("No previous concerts file found, starting fresh. " + e);
         }
 
         try (var in = new URL(TANGO_URL).openStream()) {
@@ -56,38 +58,51 @@ public class PrintTangoConcerts4 {
 
             ConcertExtractor extractor = AiServices.builder(ConcertExtractor.class).chatModel(chatModel).build();
 
-            // Extract concerts as a list of Concert records
-            List<Concert> currentConcerts = extractor.extractConcerts(htmlContent);
+            // Extract concerts as a ConcertList
+            ConcertList currentConcerts = extractor.extractConcerts(htmlContent);
 
             // Determine new concerts that were not in the old concerts
-            List<Concert> newConcertsOnly = extractor.newConcertsOnly(currentConcerts, oldConcerts);
+            ConcertList newConcertsOnly = extractor.newConcertsOnly(currentConcerts, oldConcerts);
 
             System.out.println("New Concerts Since Last Check:");
-            if (newConcertsOnly == null || newConcertsOnly.isEmpty()) {
-                System.out.println("No new concerts found.");
+            if (newConcertsOnly == null || newConcertsOnly.concerts() == null || newConcertsOnly.concerts().isEmpty()) {
+                // no output
+                returncode = 1;
             } else {
-                System.out.println(gson.toJson(newConcertsOnly));
+                // print it neatly human readable
+                for (Concert c : newConcertsOnly.concerts()) {
+                    System.out.println(c.date() + " " + c.time());
+                    System.out.println("    " + c.description());
+                    System.out.println("    " + c.location());
+                    System.out.println("    " + c.link());
+                }
             }
 
-            // Write the current concerts to the file for next time as JSON
-            String currentJson = gson.toJson(currentConcerts != null ? currentConcerts : new ArrayList<Concert>());
+            // Write the current concerts to the file for next time as JSON (wrapped as ConcertList)
+            ConcertList forWrite = currentConcerts != null ? currentConcerts : new ConcertList(new ArrayList<>());
+            String currentJson = gson.toJson(forWrite);
             Files.writeString(Path.of(SEEN_CONCERTS_FILE_NEW), currentJson);
         }
+        System.exit(returncode);
     }
 
-    private record Concert(String date, String time, String description, String location, String link) {
+    public record Concert(String date, String time, String description, String location, String link) {
+    }
+
+    public record ConcertList(List<Concert> concerts) {
     }
 
     private interface ConcertExtractor {
         @SystemMessage("Extract all concerts from the given HTML. " +
-                "Return a JSON-serializable list of Concert records (date, time, description, location, link). " +
+                "Return a JSON-serializable ConcertList record with field 'concerts' containing Concert objects (date, time, description, location, link). " +
                 "Only mention concerts, no other events like Milongas or Praktika.")
-        List<Concert> extractConcerts(String html);
+        ConcertList extractConcerts(String html);
 
-        @SystemMessage("Given two lists of concerts, 'current' and 'old', return only those concerts from 'current' that are not in 'old'. " +
-                "If there are no new concerts, return an empty list.")
-        @UserMessage("Current concerts (as JSON):\n{{current}}\n\nOld concerts (as JSON):\n{{old}}\n\nReturn only the new concerts as a JSON array.")
-        List<Concert> newConcertsOnly(@V("current") List<Concert> current, @V("old") List<Concert> old);
+        @SystemMessage("Given two ConcertList objects 'current' and 'old', return only those concerts from 'current' that are not in 'old'. " +
+                "If there are no new concerts, return an empty ConcertList with an empty 'concerts' list.")
+        @UserMessage("Current concerts (as JSON):\n{{current}}\n\nOld concerts (as JSON):\n{{old}}\n\nReturn only the new concerts as a JSON ConcertList object.")
+        ConcertList newConcertsOnly(@V("current") ConcertList current, @V("old") ConcertList old);
     }
+
 
 }
