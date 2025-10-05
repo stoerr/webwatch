@@ -1,16 +1,9 @@
-// filepath: /Users/hans-peter.stoerr/dev/my/webwatch/src/main/java/net/stoerr/tools/CheckWebPagesForChanges.java
 package net.stoerr.tools;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Attribute;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -33,10 +26,10 @@ import dev.langchain4j.service.V;
  * <p>
  * Behavior summary:
  * - Reads a JSON configuration file (default: `data/checkpages-config.json`) containing an array of page entries.
- * - For each page it fetches the HTML, sanitizes it (removes element attributes), and writes the cleaned HTML to a file.
- * - If a previous capture exists the program will feed old and new HTML to an LLM (if OPENAI_API_KEY is set) to produce
+ * - For each page it fetches the HTML, simplifies it to markdown using `HTMLToMarkdown`, and writes the markdown to a file.
+ * - If a previous capture exists the program will feed old and new markdown to an LLM (if OPENAI_API_KEY is set) to produce
  * a concise summary of relevant differences. If no key is set the program prints a short preview diff.
- * - Stores the cleaned HTML into `data/checkpages/<sanitized-url>.html` and keeps the previous version as `*.prev.html`.
+ * - Stores the cleaned markdown into `data/checkpages/<sanitized-url>.md` and keeps the previous version as `*.prev.md`.
  */
 public class CheckWebPagesForChanges {
 
@@ -65,11 +58,16 @@ public class CheckWebPagesForChanges {
         Files.createDirectories(Path.of(DATA_DIR));
         boolean anyChanges = false;
 
-        // Initialize LLM if API key present
+        // Initialize LLM only if API key present
         String apiKey = System.getenv("OPENAI_API_KEY");
-        ChatModel chatModel = OpenAiChatModel.builder().apiKey(apiKey).modelName(MODEL_NAME).
-                temperature(0.0).seed(6432).timeout(Duration.of(1, ChronoUnit.MINUTES)).build();
-        DiffExtractor extractor = AiServices.builder(DiffExtractor.class).chatModel(chatModel).build();
+        DiffExtractor extractor = null;
+        if (apiKey != null && !apiKey.isBlank()) {
+            ChatModel chatModel = OpenAiChatModel.builder().apiKey(apiKey).modelName(MODEL_NAME)
+                    .temperature(0.0).seed(6432).timeout(Duration.of(1, ChronoUnit.MINUTES)).build();
+            extractor = AiServices.builder(DiffExtractor.class).chatModel(chatModel).build();
+        } else {
+            System.out.println("OPENAI_API_KEY not set — LLM summaries disabled, using inline previews.");
+        }
 
         for (PageConfig pc : configs) {
             if (pc == null || pc.url == null || pc.url.isBlank()) {
@@ -77,10 +75,11 @@ public class CheckWebPagesForChanges {
                 continue;
             }
             try {
-                String cleanedHtml = fetchAndCleanHtml(pc);
+                // Use HTMLToMarkdown helper to fetch and convert the page to markdown
+                String markdown = HTMLToMarkdown.convertFromUrl(pc.url);
                 String filename = sanitizeFilename(pc.url);
-                Path filePath = Path.of(DATA_DIR, filename + ".html");
-                Path prevPath = Path.of(DATA_DIR, filename + ".prev.html");
+                Path filePath = Path.of(DATA_DIR, filename + ".md");
+                Path prevPath = Path.of(DATA_DIR, filename + ".prev.md");
 
                 String previous = null;
                 if (Files.exists(filePath)) {
@@ -92,19 +91,23 @@ public class CheckWebPagesForChanges {
                 }
 
                 if (previous == null) {
-                    // no previous capture: write the cleaned HTML
-                    Files.writeString(filePath, cleanedHtml);
+                    // no previous capture: write the markdown
+                    Files.writeString(filePath, markdown);
                     System.out.println("NEW CAPTURE: " + pc.url + (pc.name != null ? " (" + pc.name + ")" : ""));
                     anyChanges = true;
-                } else if (!Objects.equals(previous, cleanedHtml)) {
+                } else if (!Objects.equals(previous, markdown)) {
                     // changed: produce LLM-based summary if possible
                     anyChanges = true;
                     System.out.println("CHANGED: " + pc.url + (pc.name != null ? " (" + pc.name + ")" : ""));
-                    String diffSummary = extractor.describeDifferences(previous, cleanedHtml, pc.url != null ? pc.url : "");
-                    System.out.println("LLM summary:\n" + diffSummary);
+                    if (extractor != null) {
+                        String diffSummary = extractor.describeDifferences(previous, markdown, pc.url);
+                        System.out.println("LLM summary:\n" + diffSummary);
+                    } else {
+                        printInlinePreview(previous, markdown);
+                    }
                     // keep previous copy
                     Files.copy(filePath, prevPath, StandardCopyOption.REPLACE_EXISTING);
-                    Files.writeString(filePath, cleanedHtml);
+                    Files.writeString(filePath, markdown);
                 } else {
                     System.out.println("NO CHANGE: " + pc.url + (pc.name != null ? " (" + pc.name + ")" : ""));
                 }
@@ -130,44 +133,34 @@ public class CheckWebPagesForChanges {
         return s.substring(0, 200).replaceAll("\n", " ") + "... (truncated, length=" + s.length() + ")";
     }
 
-    private static String fetchAndCleanHtml(PageConfig pc) throws IOException {
-        try (var in = new URL(pc.url).openStream()) {
-            String html = new String(in.readAllBytes());
-            Document doc = Jsoup.parse(html, pc.url);
-            // remove all attributes except href or HREF to keep extraction stable
-            for (Element el : doc.getAllElements()) {
-                List<Attribute> attrs = new ArrayList<>(el.attributes().asList());
-                for (Attribute a : attrs)
-                    if (!a.getKey().equalsIgnoreCase("href"))
-                        el.removeAttr(a.getKey());
-            }
-            // return the cleaned outerHtml of the document
-            return doc.outerHtml();
-        }
-    }
-
     private static String sanitizeFilename(String input) {
         String stripped = input.replaceAll("[^A-Za-z0-9]", "");
         if (stripped.length() > 200) stripped = stripped.substring(0, 200);
+        if (stripped.isEmpty()) {
+            // fallback to a short UUID to avoid empty filenames
+            return "page-" + UUID.randomUUID().toString().substring(0, 8);
+        }
         return stripped;
     }
 
     // Configuration record read from JSON
-    public static record PageConfig(String name, String url) {
+    public record PageConfig(String name, String url) {
     }
 
-    // LLM interface to describe differences between two HTML captures
+    // LLM interface to describe differences between two captures (now markdown)
     private interface DiffExtractor {
-        @SystemMessage("You are a helpful assistant that compares two versions of a web page and returns a concise summary of relevant changes.\n" +
-                "The HTML provided has been cleaned: all element attributes (ids, classes, styles) have already been removed.\n" +
-                "Focus on substantive content changes (added/removed/changed text, new or removed sections, added links or images), ignore advertisements.\n" +
-                "Keep the summary short and actionable (a few bullet points). If there are no meaningful changes, return the single word: NO_CHANGE.")
+        @SystemMessage("""
+                You are a helpful assistant that compares two versions of a web page and returns a concise summary of relevant changes.
+                The content provided is markdown converted from the page's HTML (scripts, styles and attributes were removed during conversion).
+                Focus on substantive content changes (added/removed/changed text, new or removed sections, added links), ignore advertisements.
+                Keep the summary short and actionable (a few bullet points). If there are no meaningful changes, return the single word: NO_CHANGE.
+                """)
         @UserMessage("""
                 ===============================================================================
-                Old HTML:
+                Old content (markdown):
                 {{old}}
                 ===============================================================================
-                New HTML:
+                New content (markdown):
                 {{new}}
                 ===============================================================================
                 Return a concise summary of changes.
