@@ -3,15 +3,29 @@ package net.stoerr.tools;
 import java.util.Arrays;
 
 /**
- * Hello world!
- *
+ * Switch between tools, depending on first argument.
+ * --tango means PrintTangoConcerts , --checkpages means CheckWebPagesForChangesWithTextExtract
  */
 public class App {
+    public static void printUsage() {
+        System.out.println("Usage: java -jar tools.jar --tango [args for PrintTangoConcerts]");
+        System.out.println("   or: java -jar tools.jar --checkpages [args for CheckWebPagesForChangesWithTextExtract]");
+    }
+
     public static void main(String[] args) throws Exception {
-        if (args != null && args.length > 0 && "--tango".equals(args[0])) {
-            // forward remaining args to PrintTangoConcerts3.main
-            String[] forwarded = Arrays.copyOfRange(args, 1, args.length);
+        if (args.length < 1) {
+            printUsage();
+            System.exit(1);
+            return;
+        }
+        String[] forwarded = Arrays.copyOfRange(args, 1, args.length);
+        if ("--tango".equals(args[0])) {
             PrintTangoConcerts.main(forwarded);
+        } else if ("--checkpages".equals(args[0])) {
+            CheckWebPagesForChangesWithTextExtract.main(forwarded);
+        } else {
+            printUsage();
+            System.exit(1);
         }
     }
 }

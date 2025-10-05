@@ -16,9 +16,13 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 // jsoup imports
 import org.jsoup.Jsoup;
@@ -41,7 +45,7 @@ public class CheckWebPagesForChangesWithTextExtract {
 
     private static final String DEFAULT_CONFIG = "data/checkpages-config.json";
     private static final String DATA_DIR = "data/checkpages";
-    private static final String MODEL_NAME = "gpt-4.1";
+    private static final String MODEL_NAME = "gpt-4.1-mini";
 
     public static void main(String[] args) throws Exception {
         String configFile = args.length > 0 ? args[0] : DEFAULT_CONFIG;
@@ -69,7 +73,8 @@ public class CheckWebPagesForChangesWithTextExtract {
         TextExtractor textExtractor;
         DiffExtractor diffExtractor;
         if (apiKey != null && !apiKey.isBlank()) {
-            chatModel = OpenAiChatModel.builder().apiKey(apiKey).modelName(MODEL_NAME).temperature(0.0).seed(6432).build();
+            chatModel = OpenAiChatModel.builder().apiKey(apiKey).modelName(MODEL_NAME).
+                    temperature(0.0).seed(6432).timeout(Duration.of(1, ChronoUnit.MINUTES)).build();
             textExtractor = AiServices.builder(TextExtractor.class).chatModel(chatModel).build();
             diffExtractor = AiServices.builder(DiffExtractor.class).chatModel(chatModel).build();
         } else {

@@ -28,19 +28,19 @@ import dev.langchain4j.service.V;
 
 /**
  * Simple tool to monitor a list of web pages for changes.
- *
+ * <p>
  * Behavior summary:
  * - Reads a JSON configuration file (default: `data/checkpages-config.json`) containing an array of page entries.
  * - For each page it fetches the HTML, sanitizes it (removes element attributes), and writes the cleaned HTML to a file.
  * - If a previous capture exists the program will feed old and new HTML to an LLM (if OPENAI_API_KEY is set) to produce
- *   a concise summary of relevant differences. If no key is set the program prints a short preview diff.
+ * a concise summary of relevant differences. If no key is set the program prints a short preview diff.
  * - Stores the cleaned HTML into `data/checkpages/<sanitized-url>.html` and keeps the previous version as `*.prev.html`.
  */
 public class CheckWebPagesForChanges {
 
     private static final String DEFAULT_CONFIG = "data/checkpages-config.json";
     private static final String DATA_DIR = "data/checkpages";
-    private static final String MODEL_NAME = "gpt-4.1";
+    private static final String MODEL_NAME = "gpt-4.1-mini";
 
     public static void main(String[] args) throws Exception {
         String configFile = args.length > 0 ? args[0] : DEFAULT_CONFIG;
@@ -50,7 +50,8 @@ public class CheckWebPagesForChanges {
         List<PageConfig> configs;
         try {
             String cfg = Files.readString(Path.of(configFile));
-            Type listType = new com.google.gson.reflect.TypeToken<List<PageConfig>>(){}.getType();
+            Type listType = new com.google.gson.reflect.TypeToken<List<PageConfig>>() {
+            }.getType();
             configs = gson.fromJson(cfg, listType);
             if (configs == null) configs = new ArrayList<>();
         } catch (Exception e) {
@@ -136,10 +137,12 @@ public class CheckWebPagesForChanges {
         try (var in = new URL(pc.url).openStream()) {
             String html = new String(in.readAllBytes());
             Document doc = Jsoup.parse(html, pc.url);
-            // remove all attributes to keep extraction stable
+            // remove all attributes except href or HREF to keep extraction stable
             for (Element el : doc.getAllElements()) {
                 List<Attribute> attrs = new ArrayList<>(el.attributes().asList());
-                for (Attribute a : attrs) el.removeAttr(a.getKey());
+                for (Attribute a : attrs)
+                    if (!a.getKey().equalsIgnoreCase("href"))
+                        el.removeAttr(a.getKey());
             }
             // return the cleaned outerHtml of the document
             return doc.outerHtml();
@@ -163,15 +166,15 @@ public class CheckWebPagesForChanges {
                 "Focus on substantive content changes (added/removed/changed text, new or removed sections, added links or images), ignore advertisements.\n" +
                 "Keep the summary short and actionable (a few bullet points). If there are no meaningful changes, return the single word: NO_CHANGE.")
         @UserMessage("""
-===============================================================================
-Old HTML:
-{{old}}
-===============================================================================
-New HTML:
-{{new}}
-===============================================================================
-Return a concise summary of changes.
-""")
+                ===============================================================================
+                Old HTML:
+                {{old}}
+                ===============================================================================
+                New HTML:
+                {{new}}
+                ===============================================================================
+                Return a concise summary of changes.
+                """)
         String describeDifferences(@V("old") String oldHtml, @V("new") String newHtml, @V("url") String url);
     }
 
