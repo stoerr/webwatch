@@ -1,4 +1,4 @@
-// filepath: /Users/hans-peter.stoerr/dev/my/webwatch/src/main/java/net/stoerr/tools/CheckWebPagesForChanges.java
+// filepath: /Users/hans-peter.stoerr/dev/my/webwatch/src/main/java/net/stoerr/tools/CheckWebPagesForChangesWithTextExtract.java
 package net.stoerr.tools;
 
 import com.google.gson.Gson;
@@ -15,14 +15,11 @@ import java.lang.reflect.Type;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
 // jsoup imports
 import org.jsoup.Jsoup;
@@ -33,11 +30,10 @@ import org.jsoup.nodes.Element;
 
 /**
  * Simple tool to monitor a list of web pages for changes.
- *
  * Behavior summary (changed):
  * - Reads a JSON configuration file (default: `data/checkpages-config.json`) containing an array of page entries.
  * - For each page it fetches the HTML and runs an LLM to extract the page text in Markdown format.
- * - The Markdown is stored in `data/checkpages/<sanitized-url>.md` and previous versions are kept as `*.prev.md`.
+ * - The Markdown is stored in `data/checkpages/<sanitized-url>.md`.
  * - If a previous markdown exists the program will feed old and new Markdown to an LLM (if OPENAI_API_KEY is set)
  *   to produce a concise summary of relevant differences.
  */
@@ -96,7 +92,7 @@ public class CheckWebPagesForChangesWithTextExtract {
 
                 String filename = sanitizeFilename(pc.url);
                 Path filePath = Path.of(DATA_DIR, filename + ".md");
-                Path prevPath = Path.of(DATA_DIR, filename + ".prev.md");
+                // no prevPath: we no longer keep a separate .prev.md backup
 
                 String previous = null;
                 if (Files.exists(filePath)) {
@@ -118,8 +114,6 @@ public class CheckWebPagesForChangesWithTextExtract {
                     System.out.println("CHANGED: " + pc.url + (pc.name != null ? " (" + pc.name + ")" : ""));
                     String diffSummary = diffExtractor.describeDifferences(previous, markdown != null ? markdown : "", pc.url);
                     System.out.println("LLM summary:\n" + diffSummary);
-                    // keep previous copy
-                    Files.copy(filePath, prevPath, StandardCopyOption.REPLACE_EXISTING);
                     Files.writeString(filePath, markdown != null ? markdown : "");
                 } else {
                     System.out.println("NO CHANGE: " + pc.url + (pc.name != null ? " (" + pc.name + ")" : ""));
@@ -173,7 +167,7 @@ public class CheckWebPagesForChangesWithTextExtract {
         @SystemMessage("""
                 You are a helpful assistant that converts a full HTML page into clean, readable Markdown.
                 Faithfully preserve all text content and links, but try to recognize headings and present them; use # for h1, ## for h2, etc.
-                Return only valid Markdown and nothing else. 
+                Return only valid Markdown and nothing else.
                 If the information is tabular format, convert it to a Markdown table, but do not indent / align it with spaces.
                 """)
         @UserMessage("""
@@ -191,7 +185,7 @@ Return the page content as Markdown.
         @SystemMessage("""
                 You are a helpful assistant that compares two versions of a page in Markdown format and returns a concise summary of relevant changes.
                 Focus on substantive content changes (added/removed/changed text, new or removed sections, added links or images).
-                Absolutely ignore advertisements or formatting changes. 
+                Absolutely ignore advertisements or formatting changes.
                 The markdown files might be very different in formatting but identical in content - focus on the actual content.
                 Keep the summary short and actionable (a few bullet points). If there are no meaningful changes, return the single word: NO_CHANGE.
                 """)

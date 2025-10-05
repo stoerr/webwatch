@@ -6,7 +6,6 @@ import com.google.gson.GsonBuilder;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -29,7 +28,7 @@ import dev.langchain4j.service.V;
  * - For each page it fetches the HTML, simplifies it to markdown using `HTMLToMarkdown`, and writes the markdown to a file.
  * - If a previous capture exists the program will feed old and new markdown to an LLM (if OPENAI_API_KEY is set) to produce
  * a concise summary of relevant differences. If no key is set the program prints a short preview diff.
- * - Stores the cleaned markdown into `data/checkpages/<sanitized-url>.md` and keeps the previous version as `*.prev.md`.
+ * - Stores the cleaned markdown into `data/checkpages/<sanitized-url>.md` (previous backups are no longer created).
  */
 public class CheckWebPagesForChanges {
 
@@ -79,7 +78,6 @@ public class CheckWebPagesForChanges {
                 String markdown = HTMLToMarkdown.convertFromUrl(pc.url);
                 String filename = sanitizeFilename(pc.url);
                 Path filePath = Path.of(DATA_DIR, filename + ".md");
-                Path prevPath = Path.of(DATA_DIR, filename + ".prev.md");
 
                 String previous = null;
                 if (Files.exists(filePath)) {
@@ -105,8 +103,7 @@ public class CheckWebPagesForChanges {
                     } else {
                         printInlinePreview(previous, markdown);
                     }
-                    // keep previous copy
-                    Files.copy(filePath, prevPath, StandardCopyOption.REPLACE_EXISTING);
+                    // store new capture (no prev copy)
                     Files.writeString(filePath, markdown);
                 } else {
                     System.out.println("NO CHANGE: " + pc.url + (pc.name != null ? " (" + pc.name + ")" : ""));

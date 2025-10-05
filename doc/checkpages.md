@@ -10,7 +10,7 @@ Purpose
 Main pieces
 - Java class: `net.stoerr.tools.CheckWebPagesForChanges` (located next to `PrintTangoConcerts`).
 - Config file (JSON): `data/checkpages-config.json` (default location). You can pass an alternate config path as the first CLI argument.
-- Data directory: `data/checkpages/` — contains per-page JSON captures and `.prev.json` backup copies.
+- Data directory: `data/checkpages/` — contains per-page JSON captures.
 
 How it works (high level)
 - The program reads an array of page entries from the config file. Each entry may contain the fields:
@@ -21,7 +21,7 @@ How it works (high level)
   - Fetches the HTML via HTTP(S).
   - Parses the HTML with jsoup and removes element attributes to reduce noisy DOM differences.
   - For each configured selector it extracts the matching elements (outer HTML) and stores them as content.
-  - Writes a JSON capture to `data/checkpages/<sanitized-name>.json`. If a previous capture existed, it is copied to `*.prev.json` before overwriting.
+  - Writes a JSON capture to `data/checkpages/<sanitized-name>.json` and compares it to the previous capture (if any) to detect changes.
   - Compares the new capture to the previous one and prints a short summary of added/changed/removed selectors and short previews of the content.
 
 Files read and written
@@ -30,7 +30,6 @@ Files read and written
 
 - Data produced
   - `data/checkpages/<sanitized>.json` — current capture for each page.
-  - `data/checkpages/<sanitized>.prev.json` — previous capture (kept as a backup when the current one is updated).
 
 Exit codes
 - 0 — at least one page showed changes (success: you can use this to trigger notifications).
@@ -76,4 +75,3 @@ Troubleshooting
 "Why separate config and capture files?"
 - The config contains metadata and extraction instructions.
 - The capture files are structured, versionable artifacts that make diffing and historic inspection easy without mingling metadata and content.
-
