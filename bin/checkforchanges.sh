@@ -2,10 +2,12 @@
 # Run the webwatch jar with --checkpages; if it exits successfully (exit code 0)
 # send its combined output to sendmailtome.sh with subject "webwatch: pages changed".
 
-set -u
+set -uvx
 
 # Resolve script directory (so this script works when run from elsewhere)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Change working directory to parent directory of the script (project root)
+cd "$DIR/.." || exit 1
 JAR="$DIR/../target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar"
 
 if [[ ! -f "$JAR" ]]; then
@@ -22,7 +24,8 @@ java -jar "$JAR" --checkpages >"$TMPOUT" 2>&1
 rc=$?
 
 if [[ $rc -ne 0 ]]; then
-  # Do nothing on non-zero exit (exit with the same code so callers can observe it)
+  # Output the captured combined stdout+stderr so callers (or cron logs) see the failure details
+  cat "$TMPOUT"
   exit $rc
 fi
 
@@ -37,4 +40,3 @@ fi
 # Pipe the captured output to sendmailtome.sh with the requested subject.
 cat "$TMPOUT" | "$SENDMAIL_SCRIPT" "webwatch: pages changed"
 exit $?
-

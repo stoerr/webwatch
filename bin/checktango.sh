@@ -3,11 +3,13 @@
 # to sendmailtome.sh with subject "new tango concerts". If the java call
 # exits non-zero, do nothing.
 
-set -u
+set -uvx
 
 # Resolve script directory (so this script works when run from elsewhere)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-JAR="$DIR/../target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar"
+# Change working directory to parent directory of the script (project root)
+cd "$DIR/.." || exit 1
+JAR="target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar"
 
 if [[ ! -f "$JAR" ]]; then
   echo "Jar not found: $JAR" >&2
