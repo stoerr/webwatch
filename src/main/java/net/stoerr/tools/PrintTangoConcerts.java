@@ -30,7 +30,7 @@ import java.util.List;
 public class PrintTangoConcerts {
 
     private static final String TANGO_URL = "https://www.dresden-tango.de/html/ifkalender.html";
-    private static final String MODEL_NAME = "gpt-4o-search-preview";
+    private static final String MODEL_NAME = "gpt-4.1";
     private static final String SEEN_CONCERTS_FILE = "data/tango-concerts-seen.json";
     private static final String SEEN_CONCERTS_FILE_NEW = "data/tango-concerts-seen-new.json";
 
