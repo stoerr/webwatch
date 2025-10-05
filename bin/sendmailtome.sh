@@ -59,7 +59,7 @@ if ! command -v sendemail >/dev/null 2>&1; then
 fi
 
 # Build command (do not echo the password)
-CMD=(sendemail -f "$FROM" -t "$TO" -u "$SUBJECT" -m "$(cat "$TMPFILE")" -s "$SMTP" -xu "$USER" -xp "$PASS" -o tls="$TLS" -v)
+CMD=(sendemail -f "$FROM" -t "$TO" -u "$SUBJECT" -m "$(cat "$TMPFILE")" -s "$SMTP" -xu "$USER" -xp "$PASS" -o tls="$TLS" -o message-charset=CHARSET)
 
 # Print a masked summary of what will be run
 echo "Sending mail:"
