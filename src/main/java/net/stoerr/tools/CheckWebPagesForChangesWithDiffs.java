@@ -16,7 +16,6 @@ import com.github.difflib.patch.Patch;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -24,7 +23,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Simple tool to monitor a list of web pages for changes.
@@ -34,7 +32,7 @@ import java.util.stream.Collectors;
  * - For each page it fetches the HTML, simplifies it to markdown using `HTMLToMarkdown`, and writes the markdown to a file.
  * - If a previous capture exists the program will feed old and new markdown to an LLM (if OPENAI_API_KEY is set) to produce
  * a concise summary of relevant differences. If no key is set the program prints a short preview diff.
- * - Stores the cleaned markdown into `data/checkpages/<sanitized-url>.md` and keeps the previous version as `*.prev.md`.
+ * - Stores the cleaned markdown into `data/checkpages/<sanitized-url>.md`.
  */
 public class CheckWebPagesForChangesWithDiffs {
 
@@ -71,7 +69,7 @@ public class CheckWebPagesForChangesWithDiffs {
                     .temperature(0.0).seed(6432).timeout(Duration.of(1, ChronoUnit.MINUTES)).build();
             extractor = AiServices.builder(DiffExtractor.class).chatModel(chatModel).build();
         } else {
-            System.out.println("OPENAI_API_KEY not set — LLM summaries disabled, using inline previews.");
+            System.exit(1);
         }
 
         for (PageConfig pc : configs) {
@@ -84,7 +82,6 @@ public class CheckWebPagesForChangesWithDiffs {
                 String markdown = HTMLToMarkdown.convertFromUrl(pc.url);
                 String filename = sanitizeFilename(pc.url);
                 Path filePath = Path.of(DATA_DIR, filename + ".md");
-                Path prevPath = Path.of(DATA_DIR, filename + ".prev.md");
 
                 String previous = null;
                 if (Files.exists(filePath)) {
@@ -98,37 +95,31 @@ public class CheckWebPagesForChangesWithDiffs {
                 if (previous == null) {
                     // no previous capture: write the markdown
                     Files.writeString(filePath, markdown);
-                    System.out.println("NEW CAPTURE: " + pc.url + (pc.name != null ? " (" + pc.name + ")" : ""));
                     anyChanges = true;
+                    // Only output the URL and the change indicator
+                    System.out.println(pc.url);
+                    System.out.println("NEW_CAPTURE");
                 } else if (!Objects.equals(previous, markdown)) {
                     // changed: produce LLM-based summary if possible
                     anyChanges = true;
-                    System.out.println("CHANGED: " + pc.url + (pc.name != null ? " (" + pc.name + ")" : ""));
-                    if (extractor != null) {
-                        // create unified diff from previous -> markdown
-                        List<String> originalLines = Arrays.asList(previous.split("\n", -1));
-                        List<String> revisedLines = Arrays.asList(markdown.split("\n", -1));
-                        Patch<String> patch = DiffUtils.diff(originalLines, revisedLines);
-                        List<String> unified = UnifiedDiffUtils.generateUnifiedDiff("previous.md", "current.md", originalLines, patch, 3);
-                        String unifiedDiff = String.join("\n", unified);
-                        String diffSummary = extractor.describeDifferences(unifiedDiff, pc.url);
-                        System.out.println("LLM summary:\n" + diffSummary);
-                    } else {
-                        printInlinePreview(previous, markdown);
-                    }
-                    // keep previous copy
-                    Files.copy(filePath, prevPath, StandardCopyOption.REPLACE_EXISTING);
+                    // Only output the URL and then the change summary/preview
+                    System.out.println(pc.url);
+                    // create unified diff from previous -> markdown
+                    List<String> originalLines = Arrays.asList(previous.split("\n", -1));
+                    List<String> revisedLines = Arrays.asList(markdown.split("\n", -1));
+                    Patch<String> patch = DiffUtils.diff(originalLines, revisedLines);
+                    List<String> unified = UnifiedDiffUtils.generateUnifiedDiff("previous.md", "current.md", originalLines, patch, 3);
+                    String unifiedDiff = String.join("\n", unified);
+                    String diffSummary = extractor.describeDifferences(unifiedDiff, pc.url);
+                    System.out.println(diffSummary);
+                    // overwrite current capture with new content
                     Files.writeString(filePath, markdown);
-                } else {
-                    System.out.println("NO CHANGE: " + pc.url + (pc.name != null ? " (" + pc.name + ")" : ""));
                 }
 
             } catch (Exception e) {
                 System.err.println("Error processing " + pc.url + ": " + e);
             }
         }
-
-        System.exit(anyChanges ? 0 : 1);
     }
 
     private static void printInlinePreview(String oldS, String newS) {
