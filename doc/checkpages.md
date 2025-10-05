@@ -59,6 +59,17 @@ java -cp target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar net.stoerr.tools
 java -cp target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar net.stoerr.tools.CheckWebPagesForChanges data/my-checkpages.json
 ```
 
+## Automation scripts
+
+The repository includes small helper scripts in `bin/` to run the packaged jar and optionally notify you by email:
+
+- `bin/checkforchanges.sh`
+  - Runs the fat-jar with the `--checkpages` option from the repository root (the script resolves its own directory and expects the jar under `target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar`).
+  - Captures the combined stdout+stderr to a temporary file and exits non-zero if the Java process fails (in which case the captured output is printed so logs/cron can see the error).
+  - If the Java process exits with code `0` (meaning at least one page changed), the script pipes the captured output to `bin/sendmailtome.sh` with subject `webwatch: pages changed` to send a notification email.
+
+See `doc/sendmailtome.md` for details on configuring `bin/sendmailtome.sh` and the expected config file format.
+
 Notes and tips
 - The program uses jsoup and Gson — the project already depends on these libraries.
 - Filenames are sanitized deterministically (host + path rewritten) to keep names filesystem-safe and reasonably short. If the `name` field is present it is preferred for the filename.
