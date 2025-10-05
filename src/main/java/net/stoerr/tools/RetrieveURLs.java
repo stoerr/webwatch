@@ -83,10 +83,8 @@ public class RetrieveURLs {
 
             // Post-process: remove empty image constructs and collapse >2 newlines into 2
             String processed = out.toString();
-            // remove patterns like ![]() with optional spaces inside brackets/parentheses
-            processed = processed.replaceAll("!\\[\\s*\\]\\(\\s*\\)", "");
-            // collapse 3+ newlines to 2 newlines
-            processed = processed.replaceAll("\\n{3,}", "\\n\\n");
+            processed = removeEmptyImageTokens(processed);
+            processed = collapseNewlines(processed);
             // trim leading/trailing whitespace
             processed = processed.trim() + "\n";
 
@@ -114,6 +112,60 @@ public class RetrieveURLs {
         }
     }
 
+    // Remove occurrences of markdown image tokens that have empty alt and empty src, e.g. ![]()
+    private static String removeEmptyImageTokens(String s) {
+        if (s == null || s.isEmpty()) return s;
+        StringBuilder sb = new StringBuilder(s);
+        int idx = 0;
+        while (true) {
+            int start = sb.indexOf("![", idx);
+            if (start < 0) break;
+            int mid = sb.indexOf("](", start + 2);
+            if (mid < 0) break;
+            int end = sb.indexOf(")", mid + 2);
+            if (end < 0) break;
+            String betweenBracket = sb.substring(start + 2, mid).trim();
+            String betweenParen = sb.substring(mid + 2, end).trim();
+            if (betweenBracket.isEmpty() && betweenParen.isEmpty()) {
+                // remove the empty token
+                sb.delete(start, end + 1);
+                idx = start;
+            } else {
+                idx = end + 1;
+            }
+        }
+        return sb.toString();
+    }
+
+    // Collapse any run of 3 or more consecutive newlines into exactly two newlines
+    private static String collapseNewlines(String s) {
+        if (s == null || s.isEmpty()) return s;
+        StringBuilder out = new StringBuilder();
+        int n = s.length();
+        int i = 0;
+        int run = 0;
+        while (i < n) {
+            char c = s.charAt(i);
+            if (c == '\n') {
+                run++;
+                i++;
+            } else {
+                if (run > 0) {
+                    if (run > 2) run = 2;
+                    for (int k = 0; k < run; k++) out.append('\n');
+                    run = 0;
+                }
+                out.append(c);
+                i++;
+            }
+        }
+        if (run > 0) {
+            if (run > 2) run = 2;
+            for (int k = 0; k < run; k++) out.append('\n');
+        }
+        return out.toString();
+    }
+
     // Simple sanitizer: keep only ASCII letters and digits, normalized to lower-case.
     // If input looks like a URL, try to extract host+path for a more readable name.
     private static String sanitizeForFilename(String input) {
@@ -129,7 +181,7 @@ public class RetrieveURLs {
             if (host != null) sb.append(host.replaceAll("[^A-Za-z0-9]", ""));
             if (path != null && !path.isBlank()) sb.append(path.replaceAll("[^A-Za-z0-9]", ""));
             if (query != null && !query.isBlank()) sb.append(query.replaceAll("[^A-Za-z0-9]", ""));
-            if (sb.length() != 0) candidate = sb.toString();
+            if (!sb.isEmpty()) candidate = sb.toString();
         } catch (URISyntaxException ignored) {
             // not a URL, fall back to full input
         }

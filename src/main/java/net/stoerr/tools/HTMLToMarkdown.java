@@ -90,14 +90,44 @@ public class HTMLToMarkdown {
             }
             case "a": {
                 String href = el.attr("href");
-                StringBuilder inner = new StringBuilder();
-                for (Node c : el.childNodes()) processNode(c, inner, 0, false);
-                String text = inner.toString().trim();
-                if (text.isEmpty()) text = href;
-                if (href.isEmpty()) {
-                    sb.append(text);
+                // detect if href points to an image file
+                boolean hrefLooksLikeImage = !href.isBlank() && href.toLowerCase().matches(".*\\.(png|jpe?g|gif|bmp|svg)(?:\\?.*)?$");
+
+                // Build inner text excluding image elements
+                StringBuilder innerTextBuilder = new StringBuilder();
+                for (Node c : el.childNodes()) {
+                    if (c instanceof TextNode) {
+                        innerTextBuilder.append(((TextNode) c).text()).append(" ");
+                    } else if (c instanceof Element childEl) {
+                        if (!"img".equalsIgnoreCase(childEl.tagName())) {
+                            innerTextBuilder.append(childEl.text()).append(" ");
+                        }
+                    }
+                }
+                String innerText = innerTextBuilder.toString().trim();
+
+                // If the link wraps only images or the href looks like an image, do not emit a link.
+                // Instead, process children normally (images will be emitted by the img case).
+                if (hrefLooksLikeImage || innerText.isEmpty()) {
+                    for (Node c : el.childNodes()) processNode(c, sb, 0, false);
                 } else {
-                    sb.append("[").append(text).append("](").append(href).append(")");
+                    // Otherwise emit a regular markdown link with the textual content
+                    // but process child nodes that are not images to preserve styling inside the link text
+                    StringBuilder visible = new StringBuilder();
+                    for (Node c : el.childNodes()) {
+                        if (c instanceof Element childEl && "img".equalsIgnoreCase(childEl.tagName())) {
+                            // skip images inside link text
+                            continue;
+                        }
+                        processNode(c, visible, 0, false);
+                    }
+                    String visibleText = visible.toString().trim();
+                    if (!visibleText.isEmpty() && !href.isBlank()) {
+                        sb.append("[").append(visibleText).append("](").append(href).append(")");
+                    } else {
+                        // fallback: if no visible text, just process children (no link)
+                        for (Node c : el.childNodes()) processNode(c, sb, 0, false);
+                    }
                 }
                 break;
             }
@@ -169,18 +199,8 @@ public class HTMLToMarkdown {
                 break;
             }
             case "img": {
-                String alt = el.attr("alt");
-                String src = el.attr("src");
-                // Do not emit empty image tags like ![]()
-                if (src == null || src.isBlank()) {
-                    if (alt != null && !alt.isBlank()) {
-                        // emit alt text as plain text when src missing
-                        sb.append(alt);
-                    }
-                    // otherwise skip entirely
-                } else {
-                    sb.append("![").append(alt == null ? "" : alt).append("](").append(src).append(")");
-                }
+                // Previously emitted images as Markdown. Skip images entirely to avoid image links in output.
+                // This removes decorative or logo images such as small icons and site logos.
                 break;
             }
             case "table": {
