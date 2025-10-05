@@ -81,6 +81,15 @@ public class RetrieveURLs {
             out.append("Retrieved: ").append(Instant.now().toString()).append("\n\n");
             out.append(markdown).append("\n");
 
+            // Post-process: remove empty image constructs and collapse >2 newlines into 2
+            String processed = out.toString();
+            // remove patterns like ![]() with optional spaces inside brackets/parentheses
+            processed = processed.replaceAll("!\\[\\s*\\]\\(\\s*\\)", "");
+            // collapse 3+ newlines to 2 newlines
+            processed = processed.replaceAll("\\n{3,}", "\\n\\n");
+            // trim leading/trailing whitespace
+            processed = processed.trim() + "\n";
+
             String baseName = sanitizeForFilename(url);
             if (baseName.isBlank()) baseName = sanitizeForFilename(title);
             if (baseName.isBlank()) baseName = "output" + counter;
@@ -95,7 +104,7 @@ public class RetrieveURLs {
             }
 
             try {
-                Files.writeString(outFile, out.toString(), StandardCharsets.UTF_8);
+                Files.writeString(outFile, processed, StandardCharsets.UTF_8);
                 System.out.println("Wrote: " + outFile + " (from " + url + ")");
             } catch (IOException e) {
                 System.err.println("Failed to write file " + outFile + ": " + e.getMessage());
@@ -120,14 +129,12 @@ public class RetrieveURLs {
             if (host != null) sb.append(host.replaceAll("[^A-Za-z0-9]", ""));
             if (path != null && !path.isBlank()) sb.append(path.replaceAll("[^A-Za-z0-9]", ""));
             if (query != null && !query.isBlank()) sb.append(query.replaceAll("[^A-Za-z0-9]", ""));
-            if (sb.length() > 0) candidate = sb.toString();
+            if (sb.length() != 0) candidate = sb.toString();
         } catch (URISyntaxException ignored) {
             // not a URL, fall back to full input
         }
 
         // keep only alphanumeric, lower-case
-        String sanitized = candidate.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
-        return sanitized;
+        return candidate.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
     }
 }
-

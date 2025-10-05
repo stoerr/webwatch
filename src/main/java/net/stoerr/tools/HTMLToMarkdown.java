@@ -23,11 +23,15 @@ public class HTMLToMarkdown {
         // Remove noise
         doc.select("script, style, noscript, iframe, header, footer, nav").remove();
 
-        // Remove all attributes from elements to simplify structure
+        // Remove all attributes from elements to simplify structure, but keep href/src/alt/title
         for (Element el : doc.getAllElements()) {
             List<Attribute> attrs = el.attributes().asList();
             for (Attribute a : attrs) {
-                el.removeAttr(a.getKey());
+                String key = a.getKey();
+                if ("href".equalsIgnoreCase(key) || "src".equalsIgnoreCase(key) || "alt".equalsIgnoreCase(key) || "title".equalsIgnoreCase(key)) {
+                    continue; // keep these
+                }
+                el.removeAttr(key);
             }
         }
 
@@ -167,7 +171,16 @@ public class HTMLToMarkdown {
             case "img": {
                 String alt = el.attr("alt");
                 String src = el.attr("src");
-                sb.append("![").append(alt.isEmpty() ? "" : alt).append("](").append(src.isEmpty() ? "" : src).append(")");
+                // Do not emit empty image tags like ![]()
+                if (src == null || src.isBlank()) {
+                    if (alt != null && !alt.isBlank()) {
+                        // emit alt text as plain text when src missing
+                        sb.append(alt);
+                    }
+                    // otherwise skip entirely
+                } else {
+                    sb.append("![").append(alt == null ? "" : alt).append("](").append(src).append(")");
+                }
                 break;
             }
             case "table": {
