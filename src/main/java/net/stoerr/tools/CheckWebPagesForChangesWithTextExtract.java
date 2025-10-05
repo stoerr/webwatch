@@ -74,7 +74,7 @@ public class CheckWebPagesForChangesWithTextExtract {
         DiffExtractor diffExtractor;
         if (apiKey != null && !apiKey.isBlank()) {
             chatModel = OpenAiChatModel.builder().apiKey(apiKey).modelName(MODEL_NAME).
-                    temperature(0.0).seed(6432).timeout(Duration.of(1, ChronoUnit.MINUTES)).build();
+                    temperature(0.0).seed(6432).timeout(Duration.of(5, ChronoUnit.MINUTES)).build();
             textExtractor = AiServices.builder(TextExtractor.class).chatModel(chatModel).build();
             diffExtractor = AiServices.builder(DiffExtractor.class).chatModel(chatModel).build();
         } else {

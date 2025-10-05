@@ -14,6 +14,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -65,14 +67,9 @@ public class CheckWebPagesForChanges {
 
         // Initialize LLM if API key present
         String apiKey = System.getenv("OPENAI_API_KEY");
-        ChatModel chatModel = null;
-        DiffExtractor extractor = null;
-        if (apiKey != null && !apiKey.isBlank()) {
-            chatModel = OpenAiChatModel.builder().apiKey(apiKey).modelName(MODEL_NAME).build();
-            extractor = AiServices.builder(DiffExtractor.class).chatModel(chatModel).build();
-        } else {
-            throw new IllegalStateException("OPENAI_API_KEY not set; LLM-based diffs will be skipped.");
-        }
+        ChatModel chatModel = OpenAiChatModel.builder().apiKey(apiKey).modelName(MODEL_NAME).
+                temperature(0.0).seed(6432).timeout(Duration.of(1, ChronoUnit.MINUTES)).build();
+        DiffExtractor extractor = AiServices.builder(DiffExtractor.class).chatModel(chatModel).build();
 
         for (PageConfig pc : configs) {
             if (pc == null || pc.url == null || pc.url.isBlank()) {
