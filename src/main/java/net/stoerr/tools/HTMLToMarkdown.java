@@ -209,13 +209,14 @@ public class HTMLToMarkdown {
                 for (Element row : el.select("tr")) {
                     boolean first = true;
                     for (Element cell : row.select("th,td")) {
-                        if (!first) sb.append(" | ");
+                        if (!first) sb.append(" ");
+                        sb.append("| ");
                         StringBuilder inner = new StringBuilder();
                         for (Node c : cell.childNodes()) processNode(c, inner, 0, false);
                         sb.append(inner.toString().trim());
                         first = false;
                     }
-                    sb.append("\n");
+                    sb.append(" |\n");
                 }
                 sb.append("\n\n");
                 break;

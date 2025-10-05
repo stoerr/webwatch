@@ -22,7 +22,7 @@ public class App {
         if ("--tango".equals(args[0])) {
             PrintTangoConcerts.main(forwarded);
         } else if ("--checkpages".equals(args[0])) {
-            CheckWebPagesForChangesWithTextExtract.main(forwarded);
+            CheckWebPagesForChangesWithDiffs.main(forwarded);
         } else {
             printUsage();
             System.exit(1);
