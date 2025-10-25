@@ -9,3 +9,5 @@
 data/*
 target/
 target/*
+.cgptcodeveloper/.requestlog.txt
+hpsx*

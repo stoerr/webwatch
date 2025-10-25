@@ -2,7 +2,7 @@
 # Run the webwatch jar with --checkpages; if it exits successfully (exit code 0)
 # send its combined output to sendmailtome.sh with subject "webwatch: pages changed".
 
-set -uvx
+# set -uvx
 
 # Resolve script directory (so this script works when run from elsewhere)
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -10,33 +10,22 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR/.." || exit 1
 JAR="$DIR/../target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar"
 
-if [[ ! -f "$JAR" ]]; then
-  echo "Jar not found: $JAR" >&2
-  exit 1
-fi
-
-# Use a temp file to capture combined stdout+stderr (safer for large output)
 TMPOUT="$(mktemp)"
 trap 'rm -f "$TMPOUT"' EXIT
 
-# Run java and capture combined stdout+stderr into the temp file
 java -jar "$JAR" --checkpages >"$TMPOUT" 2>&1
 rc=$?
 
 if [[ $rc -ne 0 ]]; then
-  # Output the captured combined stdout+stderr so callers (or cron logs) see the failure details
+  echo "Java call failed with exit code $rc, no email sent." >&2
   cat "$TMPOUT"
   exit $rc
 fi
 
-# Path to sendmailtome.sh (located next to this script)
 SENDMAIL_SCRIPT="$DIR/sendmailtome.sh"
-
-if [[ ! -f "$SENDMAIL_SCRIPT" ]]; then
-  echo "sendmailtome.sh not found in $DIR" >&2
+cat "$TMPOUT" | "$SENDMAIL_SCRIPT" "webwatch: pages changed"
+if [[ $? -ne 0 ]]; then
+  echo "sendmailtome.sh failed, not updating seen pages file." >&2
   exit 1
 fi
-
-# Pipe the captured output to sendmailtome.sh with the requested subject.
-cat "$TMPOUT" | "$SENDMAIL_SCRIPT" "webwatch: pages changed"
 exit $?
