@@ -9,6 +9,11 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR/.." || exit 1
 JAR="target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar"
 
+# Set OPENAI_API_KEY if not already set
+if [ -z "$OPENAI_API_KEY" ]; then
+  export OPENAI_API_KEY=$(cat $HOME/.openai-api-key.txt)
+fi
+
 TMPOUT="$(mktemp)"
 trap 'rm -f "$TMPOUT"' EXIT
 

@@ -69,7 +69,8 @@ public class CheckWebPagesForChangesWithDiffs {
                     .temperature(0.0).seed(6432).timeout(Duration.of(1, ChronoUnit.MINUTES)).build();
             extractor = AiServices.builder(DiffExtractor.class).chatModel(chatModel).build();
         } else {
-            System.exit(1);
+            System.err.println("No API key.");
+            System.exit(3);
         }
 
         for (PageConfig pc : configs) {
