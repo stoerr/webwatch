@@ -37,7 +37,8 @@ public class PrintTangoConcerts {
     public static void main(String[] args) throws Exception {
         int returncode = 0;
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        Type concertListType = new TypeToken<ConcertList>() {}.getType();
+        Type concertListType = new TypeToken<ConcertList>() {
+        }.getType();
 
         ConcertList oldConcerts = new ConcertList(new ArrayList<>());
         // read old concerts from file (JSON object with 'concerts' field)
@@ -77,7 +78,7 @@ public class PrintTangoConcerts {
             // Determine new concerts that were not in the old concerts
             ConcertList newConcertsOnly = extractor.newConcertsOnly(currentConcerts, oldConcerts);
 
-            System.out.println("New Concerts Since Last Check:");
+            System.out.println("New Concerts Since Last Check in " + TANGO_URL + ":");
             if (newConcertsOnly == null || newConcertsOnly.concerts() == null || newConcertsOnly.concerts().isEmpty()) {
                 // no output
                 returncode = 1;

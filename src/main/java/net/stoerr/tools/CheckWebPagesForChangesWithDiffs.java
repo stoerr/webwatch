@@ -59,7 +59,6 @@ public class CheckWebPagesForChangesWithDiffs {
         }
 
         Files.createDirectories(Path.of(DATA_DIR));
-        boolean anyChanges = false;
 
         // Initialize LLM only if API key present
         String apiKey = System.getenv("OPENAI_API_KEY");
@@ -96,23 +95,23 @@ public class CheckWebPagesForChangesWithDiffs {
                 if (previous == null) {
                     // no previous capture: write the markdown
                     Files.writeString(filePath, markdown);
-                    anyChanges = true;
                     // Only output the URL and the change indicator
                     System.out.println(pc.url);
                     System.out.println("NEW_CAPTURE");
                 } else if (!Objects.equals(previous, markdown)) {
                     // changed: produce LLM-based summary if possible
-                    anyChanges = true;
-                    // Only output the URL and then the change summary/preview
-                    System.out.println(pc.url);
                     // create unified diff from previous -> markdown
                     List<String> originalLines = Arrays.asList(previous.split("\n", -1));
                     List<String> revisedLines = Arrays.asList(markdown.split("\n", -1));
                     Patch<String> patch = DiffUtils.diff(originalLines, revisedLines);
                     List<String> unified = UnifiedDiffUtils.generateUnifiedDiff("previous.md", "current.md", originalLines, patch, 3);
                     String unifiedDiff = String.join("\n", unified);
-                    String diffSummary = extractor.describeDifferences(unifiedDiff, pc.url);
-                    System.out.println(diffSummary);
+                    String today = java.time.LocalDate.now().toString();
+                    String diffSummary = extractor.describeDifferences(unifiedDiff, pc.url, today);
+                    if (diffSummary != null && !"NO_CHANGE".equals(diffSummary.trim())) {
+                        System.out.println(pc.url);
+                        System.out.println(diffSummary);
+                    }
                     // overwrite current capture with new content
                     Files.writeString(filePath, markdown);
                 }
@@ -121,19 +120,6 @@ public class CheckWebPagesForChangesWithDiffs {
                 System.err.println("Error processing " + pc.url + ": " + e);
             }
         }
-    }
-
-    private static void printInlinePreview(String oldS, String newS) {
-        System.out.println("  (no LLM available) Showing short previews:");
-        System.out.println("    - previous: " + shortPreview(oldS));
-        System.out.println("    - current : " + shortPreview(newS));
-    }
-
-    private static String shortPreview(String s) {
-        if (s == null) return "(null)";
-        s = s.strip();
-        if (s.length() <= 200) return s.replaceAll("\n", " ");
-        return s.substring(0, 200).replaceAll("\n", " ") + "... (truncated, length=" + s.length() + ")";
     }
 
     private static String sanitizeFilename(String input) {
@@ -158,11 +144,13 @@ public class CheckWebPagesForChangesWithDiffs {
                 Focus on substantive content changes (added/removed/changed text, new or removed sections, added links), ignore advertisements irrelevant to the main page content.
                 Keep the summary short and actionable (a few bullet points). NEVER mention formatting changes.
                 If there are no meaningful changes, return the single word: NO_CHANGE.
+                Today is the {{current_date}} - do not removed information about past events or sold out events.
                 """)
         @UserMessage("""
                 {{diff}}
                 """)
-        String describeDifferences(@V("diff") String unifiedDiff, @V("url") String url);
+        String describeDifferences(@V("diff") String unifiedDiff, @V("url") String url,
+                                   @V("current_date") String currentDate);
     }
 
 }
