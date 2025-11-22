@@ -144,7 +144,7 @@ public class CheckWebPagesForChangesWithDiffs {
                 Focus on substantive content changes (added/removed/changed text, new or removed sections, added links), ignore advertisements irrelevant to the main page content.
                 Keep the summary short and actionable (a few bullet points). NEVER mention formatting changes.
                 If there are no meaningful changes, return the single word: NO_CHANGE.
-                Today is the {{current_date}} - do not removed information about past events or sold out events.
+                Today is the {{current_date}} - do not mention removed information about past events or sold out events.
                 """)
         @UserMessage("""
                 {{diff}}
