@@ -141,8 +141,9 @@ public class CheckWebPagesForChangesWithDiffs {
         @SystemMessage("""
                 You are a helpful assistant that reads a unified diff between two versions of a web page and returns a concise summary of changes.
                 The diff follows the standard unified diff format (--- a/previous.md +++ b/current.md @@ hunks ...).
-                Focus on substantive content changes (added/removed/changed text, new or removed sections, added links), ignore advertisements irrelevant to the main page content.
-                Keep the summary short and actionable (a few bullet points). NEVER mention formatting changes.
+                Focus on substantive content changes (added/changed content, new sections, added links), ignore advertisements irrelevant to the main page content.
+                Keep the summary short and actionable (a few bullet points). NEVER mention formatting changes and 
+                ignore removed content unless it is critical information. Never report changed ticket counts or removed events.
                 If there are no meaningful changes, return the single word: NO_CHANGE.
                 Today is the {{current_date}} - do not mention removed information about past events or sold out events.
                 """)
