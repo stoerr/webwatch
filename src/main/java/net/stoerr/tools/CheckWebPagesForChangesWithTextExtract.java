@@ -41,7 +41,7 @@ public class CheckWebPagesForChangesWithTextExtract {
 
     private static final String DEFAULT_CONFIG = "data/checkpages-config.json";
     private static final String DATA_DIR = "data/checkpages";
-    private static final String MODEL_NAME = "gpt-4.1-mini";
+    private static final String MODEL_NAME = "gpt-5-nano";
 
     public static void main(String[] args) throws Exception {
         String configFile = args.length > 0 ? args[0] : DEFAULT_CONFIG;
