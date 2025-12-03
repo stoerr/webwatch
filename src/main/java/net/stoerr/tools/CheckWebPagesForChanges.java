@@ -62,7 +62,7 @@ public class CheckWebPagesForChanges {
         DiffExtractor extractor = null;
         if (apiKey != null && !apiKey.isBlank()) {
             ChatModel chatModel = OpenAiChatModel.builder().apiKey(apiKey).modelName(MODEL_NAME)
-                    .temperature(0.0).seed(6432).timeout(Duration.of(1, ChronoUnit.MINUTES)).build();
+                    .timeout(Duration.of(1, ChronoUnit.MINUTES)).build();
             extractor = AiServices.builder(DiffExtractor.class).chatModel(chatModel).build();
         } else {
             System.out.println("OPENAI_API_KEY not set — LLM summaries disabled, using inline previews.");
