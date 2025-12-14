@@ -5,6 +5,6 @@
   },
   {
     "title": "Ego-Search",
-    "prompt": "Wer ist Hans-Peter Störr"
+    "prompt": "Check whether there are any new search results about Hans-Peter Störr (that exact name in exact that spelling) on the web since last month. If you find any new results, provide a brief summary of each result including the title, source, and a short description. If there are no new results, simply respond with \"NOT FOUND\"."
   }
 ]

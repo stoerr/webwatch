@@ -76,10 +76,8 @@ public class SearchJobs {
     }
 
     private static class Job {
-        String id;
         String title;
         String prompt;
-        String emailSubject;
     }
 
     private interface SearchExtractor {

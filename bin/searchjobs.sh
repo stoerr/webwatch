@@ -21,6 +21,10 @@ java -jar "$JAR" --searchjobs >"$TMPOUT" 2>&1
 rc=$?
 
 if [[ $rc -ne 0 ]]; then
+  if [[ $rc -eq 2 ]]; then
+    echo "No search results (exit code 2), no email sent."
+    exit $rc
+  fi
   echo "Java call failed with exit code $rc, no email sent." >&2
   exit $rc
 fi
