@@ -52,8 +52,6 @@ Schema (informal):
   return exactly either the single token `NOT FOUND` (when nothing matches) or the result content.
 - emailSubject: string (optional) — subject to use when sending mail for this job; fall back to
   `new search job: <title>` if absent.
-- seenFile: string (optional) — path under `data/` used to persist "seen" results. If absent a default
-  `data/searchjobs-<id|-sanitized-title>-seen.json` will be used.
 
 Example (the project already includes the following example in `src/main/resources/searchjobs.json`):
 
@@ -75,8 +73,7 @@ Behavior details
   - create a temp file `TMPOUT` and trap its removal on EXIT.
   - run `java -jar "$JAR" --searchjobs >"$TMPOUT" 2>&1` and capture the exit code.
   - if the java call fails (exit code non-zero), do not call `sendmailtome.sh` and return that exit code.
-  - if the java call succeeds, pipe `TMPOUT` into `bin/sendmailtome.sh` with an appropriate subject and, on
-    success, move any generated `data/*-seen-new.json` to their stable `*-seen.json` counterpart.
+  - if the java call succeeds, pipe `TMPOUT` into `bin/sendmailtome.sh` with an appropriate subject.
 
 2) `App` integration
 
@@ -96,10 +93,7 @@ Behavior details
         .modelName("gpt-5-search-api")
         .build();
 
-    // Use AiServices to define a typed extractor interface for the prompt
-    SearchExtractor services = AiServices.builder(SearchExtractor.class)
-        .chatModel(chatModel)
-        .build();
+    SearchExtractor services = AiServices.builder(SearchExtractor.class).chatModel(chatModel).build();
 
     Where `SearchExtractor` is a small interface with one method like:
 
@@ -110,7 +104,7 @@ Behavior details
   - Call `services.search(job.prompt)` and trim the response.
   - If the response equals (exact match) the string `NOT FOUND` (case-sensitive), treat as no result.
   - Otherwise treat the response as a positive result and print a clearly delimited output section
-    including the job `title`, `id` (if present), and the response body.
+    including the job `title` and the response body.
 - If any job returns a positive result, exit 0. If all jobs return `NOT FOUND`, exit with non-zero (e.g. 2)
   so the wrapper script can skip emailing.
 
@@ -124,14 +118,7 @@ Behavior details
 
 - If multiple jobs produce positive results, concatenate the sections in the same output stream.
 
-5) Seen-file policy
-
-- When a positive result is found, `SearchJobs` should write a "new" seen file for the job at the path
-  `data/<seenFile>-new.json` (for example `data/searchjobs-milonga-kurse-seen-new.json`). The shell script
-  moves that file into place (rename to remove `-new`) only after `sendmailtome.sh` succeeds. This matches
-  the pattern used by `bin/checktango.sh`.
-
-6) Exit codes
+5) Exit codes
 
 - 0: One or more positive results were printed and everything completed normally.
 - 1: Unexpected error (I/O, JSON parse error, model error).
@@ -144,14 +131,12 @@ Developer notes and implementation details
   existing project code for examples) to keep prompts and result extraction typed and testable.
 - Do not attempt to defensively handle `null` API keys or model objects; follow the project convention and let the
   program fail if mandatory components are missing.
-- When writing seen files, write to `*-new.json` first and let the caller move to the stable name only on
-  successful email delivery.
 
 Testing
 
 - Unit tests should validate parsing of `searchjobs.json` and the job object defaults.
 - Logic tests should mock the `SearchExtractor` (or the AiServices builder) to return controlled strings
-  (`NOT FOUND` and a non-empty payload) to validate exit codes, output, and seen-file creation.
+  (`NOT FOUND` and a non-empty payload) to validate exit codes and output.
 - Do not make live calls to OpenAI in unit tests.
 
 Operational notes
@@ -164,8 +149,6 @@ Open questions for you (pick a choice before implementation)
 
 - Per-job emails vs aggregated: should the wrapper send one mail per positive job, or one aggregated mail
   containing all positive results? The spec above assumes aggregated output and a single mail per run.
-- Seen-file naming: the spec suggests one seen file per job. Confirm if you prefer a single aggregated seen file
-  instead.
 
 End of specification
 
