@@ -1,5 +1,5 @@
 // filepath: /Users/hans-peter.stoerr/dev/my/webwatch/src/main/java/net/stoerr/tools/CheckWebPagesForChangesWithTextExtract.java
-package net.stoerr.tools;
+package net.stoerr.tools.unused;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

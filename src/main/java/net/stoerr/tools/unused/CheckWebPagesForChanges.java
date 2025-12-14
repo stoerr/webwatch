@@ -1,4 +1,4 @@
-package net.stoerr.tools;
+package net.stoerr.tools.unused;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -19,6 +19,7 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import net.stoerr.tools.HTMLToMarkdown;
 
 /**
  * Simple tool to monitor a list of web pages for changes.

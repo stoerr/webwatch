@@ -8,7 +8,7 @@ Purpose
 - Provide concise, human-readable change output that can be used by scripts (e.g., to send notifications).
 
 Main pieces
-- Java class: `net.stoerr.tools.CheckWebPagesForChanges` (located next to `PrintTangoConcerts`).
+- Java class: `net.stoerr.tools.CheckWebPagesForChangesWithDiffs` (located next to `PrintTangoConcerts`).
 - Config file (JSON): `data/checkpages-config.json` (default location). You can pass an alternate config path as the first CLI argument.
 - Data directory: `data/checkpages/` — contains per-page JSON captures.
 
@@ -53,10 +53,10 @@ Running the tool
 
 ```bash
 # run the class directly from the fat-jar
-java -cp target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar net.stoerr.tools.CheckWebPagesForChanges
+java -cp target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar net.stoerr.tools.CheckWebPagesForChangesWithDiffs
 
 # or with a specific config file
-java -cp target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar net.stoerr.tools.CheckWebPagesForChanges data/my-checkpages.json
+java -cp target/webwatch-1.0-SNAPSHOT-jar-with-dependencies.jar net.stoerr.tools.CheckWebPagesForChangesWithDiffs data/my-checkpages.json
 ```
 
 ## Automation scripts
