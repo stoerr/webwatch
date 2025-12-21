@@ -3,7 +3,7 @@ searchjobs — specification
 Purpose
 
 Add a small "search jobs" feature to the webwatch project: a CLI entrypoint that reads search jobs from
-`src/main/resources/searchjobs.json`, sends each job prompt to the model `gpt-5-search-api` using langchain4j,
+`src/main/resources/searchjobs.yaml`, sends each job prompt to the model `gpt-5-search-api` using langchain4j,
 and when a job returns anything other than the literal string "NOT FOUND" the program prints the result and
 exits successfully so a wrapper script can email the result to the maintainer.
 
@@ -12,7 +12,7 @@ Quick summary (what the feature provides)
 - `bin/searchjobs.sh`: shell starter that runs the fat jar with `--searchjobs`. If the Java process exits
   zero it pipes the output to `bin/sendmailtome.sh` (like `bin/checktango.sh`).
 - `App` will support the `--searchjobs` flag and start `SearchJobs.main`.
-- `SearchJobs` reads `src/main/resources/searchjobs.json` and runs each job prompt against the model
+- `SearchJobs` reads `src/main/resources/searchjobs.yaml` and runs each job prompt against the model
   `gpt-5-search-api` via langchain4j. If a job returns anything other than `"NOT FOUND"` that text is
   printed and treated as a positive result.
 
@@ -21,7 +21,7 @@ Goals and constraints
 - Keep behavior consistent with existing scripts (`bin/checktango.sh`).
 - No live API calls in tests; tests should mock the LLM layer.
 - Keep exit-code semantics consistent with other tools: non-zero means "nothing to send" or failure.
-- The project already contains a sample `searchjobs.json`; use the same minimal schema but allow optional
+- The project already contains a sample `searchjobs.yaml`; use the same minimal schema but allow optional
   fields for convenience.
 
 Files to create / modify (high level)
@@ -29,7 +29,7 @@ Files to create / modify (high level)
 - New: `bin/searchjobs.sh` — shell starter modeled on `bin/checktango.sh`.
 - Modify: `src/main/java/net/stoerr/tools/App.java` — add `--searchjobs` flag handling.
 - New: `src/main/java/net/stoerr/tools/SearchJobs.java` — main implementation.
-- Modify: `src/main/resources/searchjobs.json` — can contain one or more jobs; a sample already exists.
+- Modify: `src/main/resources/searchjobs.yaml` — can contain one or more jobs; a sample already exists.
 - New tests: unit tests for JSON parsing and logic, with mocked LLM.
 - New docs: this file `doc/searchjobs.md`.
 
@@ -39,9 +39,9 @@ Runtime environment
   `OPENAI_API_KEY` from `$HOME/.openai-api-key.txt` when not present. The program itself expects the
   environment to be configured (the code can assume an API key is available; let it fail otherwise).
 
-searchjobs.json schema
+searchjobs.yaml schema
 
-The configuration is a JSON array of job objects. Minimal fields are `title` and `prompt`. Additional
+The configuration is a YAML list of job objects. Minimal fields are `title` and `prompt`. Additional
 optional fields are supported for convenience.
 
 Schema (informal):
@@ -53,14 +53,10 @@ Schema (informal):
 - emailSubject: string (optional) — subject to use when sending mail for this job; fall back to
   `new search job: <title>` if absent.
 
-Example (the project already includes the following example in `src/main/resources/searchjobs.json`):
+Example (the project already includes the following example in `src/main/resources/searchjobs.yaml`):
 
-[
-  {
-    "title": "Milonga-Kurse",
-    "prompt": "Pr\u00fcfe ob in der n\u00e4chsten Zeit ein Milonga Wochenendkurs in Dresden angeboten wird. Ich meine keine Tanz-Veranstaltungen, sondern den Tanz \"Milonga\", den man bei Kursen zum Tango Argentino lernt. Einen allgemeinen Tango-Kurs n\u00fctzt uns nichts - da haben wir bereits viele Kurse besucht. Fortlaufende Kurse schaffen wir nicht. Nur ein Wochenend-Kurs (Workshop) w\u00fcrde uns helfen. Keine Festivals, keine Events. Wenn Du keine findest, dann gib nur eine \"NOT FOUND\" aus, ansonsten eine Liste mit Kursbeschreibungen. Bitte keine Instruktionen, Hinweise etc. - nur Wochenend-Workshops mit Exclusiv-Thema \"Milonga\" die Du findest, oder \"NOT FOUND\"."
-  }
-]
+- title: "Milonga-Kurse"
+  prompt: "Pr\u00fcfe ob in der n\u00e4chsten Zeit ein Milonga Wochenendkurs in Dresden angeboten wird. Ich meine keine Tanz-Veranstaltungen, sondern den Tanz \"Milonga\", den man bei Kursen zum Tango Argentino lernt. Einen allgemeinen Tango-Kurs n\u00fctzt uns nichts - da haben wir bereits viele Kurse besucht. Fortlaufende Kurse schaffen wir nicht. Nur ein Wochenend-Kurs (Workshop) w\u00fcrde uns helfen. Keine Festivals, keine Events. Wenn Du keine findest, dann gib nur eine \"NOT FOUND\" aus, ansonsten eine Liste mit Kursbeschreibungen. Bitte keine Instruktionen, Hinweise etc. - nur Wochenend-Workshops mit Exclusiv-Thema \"Milonga\" die Du findest, oder \"NOT FOUND\"."
 
 Behavior details
 
@@ -82,8 +78,7 @@ Behavior details
 
 3) `SearchJobs` runtime flow (Java)
 
-- Read `src/main/resources/searchjobs.json` as classpath resource and parse it to a list of Job objects using
-  Gson (project already uses Gson elsewhere).
+- Read `src/main/resources/searchjobs.yaml` and parse it to a list of Job objects using SnakeYAML.
 - For each job:
   - build a ChatModel via langchain4j. Use the model name `gpt-5-search-api`. Example of the pattern used in
     this project:
@@ -121,12 +116,12 @@ Behavior details
 5) Exit codes
 
 - 0: One or more positive results were printed and everything completed normally.
-- 1: Unexpected error (I/O, JSON parse error, model error).
+- 1: Unexpected error (I/O, YAML parse error, model error).
 - 2: No job returned a result (all returned `NOT FOUND`) — no email should be sent.
 
 Developer notes and implementation details
 
-- Use Gson for parsing `searchjobs.json` (consistent with the project).
+- Use SnakeYAML for parsing `searchjobs.yaml`.
 - Use langchain4j OpenAI chat model builder and AiServices typed extractor pattern (see `PrintTangoConcerts` and
   existing project code for examples) to keep prompts and result extraction typed and testable.
 - Do not attempt to defensively handle `null` API keys or model objects; follow the project convention and let the
@@ -134,7 +129,7 @@ Developer notes and implementation details
 
 Testing
 
-- Unit tests should validate parsing of `searchjobs.json` and the job object defaults.
+- Unit tests should validate parsing of `searchjobs.yaml` and the job object defaults.
 - Logic tests should mock the `SearchExtractor` (or the AiServices builder) to return controlled strings
   (`NOT FOUND` and a non-empty payload) to validate exit codes and output.
 - Do not make live calls to OpenAI in unit tests.
@@ -151,4 +146,3 @@ Open questions for you (pick a choice before implementation)
   containing all positive results? The spec above assumes aggregated output and a single mail per run.
 
 End of specification
-

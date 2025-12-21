@@ -1,0 +1,19 @@
+- title: "Milonga-Kurse"
+  prompt: |
+    Prüfe ob in der nächsten Zeit ein Milonga Wochenendkurs in Dresden angeboten wird. Ich meine keine
+    Tanz-Veranstaltungen, sondern den Tanz "Milonga", den man bei Kursen zum Tango Argentino lernt.
+    Einen allgemeinen Tango-Kurs nützt uns nichts - da haben wir bereits viele Kurse besucht.
+    Fortlaufende Kurse schaffen wir nicht. Nur ein Wochenend-Kurs (Workshop) würde uns helfen.
+    Keine Festivals, keine Events. Wenn Du keine findest, dann gib nur eine "NOT FOUND" aus,
+    ansonsten eine Liste mit Kursbeschreibungen. Bitte keine Instruktionen, Hinweise etc. -
+    nur Wochenend-Workshops mit Exclusiv-Thema "Milonga" die Du findest, oder "NOT FOUND",
+    nichts anderem.
+- title: "Ego-Search"
+  prompt: |
+    Check whether there are any new search results about Hans-Peter Störr (that exact name in exact that
+    spelling) on the web since last month. If you find any new results, provide a brief summary of each
+    result including the title, source, and a short description. If there are no new results, simply
+    respond with "NOT FOUND", nothing else.
+- title: "Shank Prakshalana"
+  prompt: |
+    Suche nach lokalen Workshops in Dresden die Shank Prakshalana anbieten.

@@ -1,19 +1,17 @@
 package net.stoerr.tools;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.SystemMessage;
+import org.yaml.snakeyaml.Yaml;
 
-import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Run configured search jobs: feed each job.prompt to the LLM and print any output that is not the
@@ -22,18 +20,15 @@ import java.util.List;
  */
 public class SearchJobs {
 
-    private static final String DEFAULT_CONFIG = "src/main/resources/searchjobs.json";
+    private static final String DEFAULT_CONFIG = "src/main/resources/searchjobs.yaml";
     private static final String MODEL_NAME = "gpt-5-search-api";
 
     public static void main(String[] args) throws Exception {
         String configFile = args.length > 0 ? args[0] : DEFAULT_CONFIG;
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
         List<Job> jobs;
         try {
             String cfg = Files.readString(Path.of(configFile));
-            Type listType = new TypeToken<List<Job>>() {}.getType();
-            jobs = gson.fromJson(cfg, listType);
-            if (jobs == null) jobs = new ArrayList<>();
+            jobs = parseJobs(cfg);
         } catch (Exception e) {
             System.err.println("Failed to read config '" + configFile + "': " + e);
             System.exit(1);
@@ -75,6 +70,28 @@ public class SearchJobs {
         }
     }
 
+    private static List<Job> parseJobs(String cfg) {
+        Yaml yaml = new Yaml();
+        Object loaded = yaml.load(cfg);
+        List<Job> jobs = new ArrayList<>();
+        if (loaded == null) {
+            return jobs;
+        }
+        if (!(loaded instanceof List<?> list)) {
+            throw new IllegalArgumentException("Expected YAML list at top level");
+        }
+        for (Object item : list) {
+            if (!(item instanceof Map<?, ?> map)) continue;
+            Job job = new Job();
+            Object title = map.get("title");
+            Object prompt = map.get("prompt");
+            job.title = title == null ? null : title.toString();
+            job.prompt = prompt == null ? null : prompt.toString();
+            jobs.add(job);
+        }
+        return jobs;
+    }
+
     private static class Job {
         String title;
         String prompt;
@@ -85,4 +102,3 @@ public class SearchJobs {
         String search(String prompt);
     }
 }
-
