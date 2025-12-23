@@ -39,6 +39,7 @@ public class CheckWebPagesForChangesWithDiffs {
     private static final String DEFAULT_CONFIG = "data/checkpages-config.json";
     private static final String DATA_DIR = "data/checkpages";
     private static final String MODEL_NAME = "gpt-5-nano";
+    private static final String MODEL_NAME_HI = "gpt-5.1";
 
     public static void main(String[] args) throws Exception {
         String configFile = args.length > 0 ? args[0] : DEFAULT_CONFIG;
@@ -63,14 +64,21 @@ public class CheckWebPagesForChangesWithDiffs {
         // Initialize LLM only if API key present
         String apiKey = System.getenv("OPENAI_API_KEY");
         DiffExtractor extractor = null;
+        Cleanup cleanup = null;
         if (apiKey != null && !apiKey.isBlank()) {
             ChatModel chatModel = OpenAiChatModel.builder().apiKey(apiKey).modelName(MODEL_NAME)
                     .timeout(Duration.of(1, ChronoUnit.MINUTES)).build();
             extractor = AiServices.builder(DiffExtractor.class).chatModel(chatModel).build();
+
+            ChatModel cleanupModel = OpenAiChatModel.builder().apiKey(apiKey).modelName(MODEL_NAME_HI)
+                    .timeout(Duration.of(1, ChronoUnit.MINUTES)).build();
+            cleanup = AiServices.builder(Cleanup.class).chatModel(cleanupModel).build();
         } else {
             System.err.println("No API key.");
             System.exit(3);
         }
+
+        StringBuilder diffs = new StringBuilder();
 
         for (PageConfig pc : configs) {
             if (pc == null || pc.url == null || pc.url.isBlank()) {
@@ -96,8 +104,7 @@ public class CheckWebPagesForChangesWithDiffs {
                     // no previous capture: write the markdown
                     Files.writeString(filePath, markdown);
                     // Only output the URL and the change indicator
-                    System.out.println(pc.url);
-                    System.out.println("NEW_CAPTURE");
+                    diffs.append("\n\n").append(pc.url).append("\nNEW_CAPTURE\n");
                 } else if (!Objects.equals(previous, markdown)) {
                     // changed: produce LLM-based summary if possible
                     // create unified diff from previous -> markdown
@@ -109,8 +116,7 @@ public class CheckWebPagesForChangesWithDiffs {
                     String today = java.time.LocalDate.now().toString();
                     String diffSummary = extractor.describeDifferences(unifiedDiff, pc.url, today);
                     if (diffSummary != null && !"NO_CHANGE".equals(diffSummary.trim())) {
-                        System.out.println(pc.url);
-                        System.out.println(diffSummary);
+                        diffs.append("\n\n").append(pc.url).append("\n").append(diffSummary).append("\n");
                     }
                     // overwrite current capture with new content
                     Files.writeString(filePath, markdown);
@@ -120,6 +126,9 @@ public class CheckWebPagesForChangesWithDiffs {
                 System.err.println("Error processing " + pc.url + ": " + e);
             }
         }
+
+        String cleaned = cleanup.cleanUp(diffs.toString());
+        System.out.println(cleaned);
     }
 
     private static String sanitizeFilename(String input) {
@@ -142,7 +151,7 @@ public class CheckWebPagesForChangesWithDiffs {
                 You are a helpful assistant that reads a unified diff between two versions of a web page and returns a concise summary of changes.
                 The diff follows the standard unified diff format (--- a/previous.md +++ b/current.md @@ hunks ...).
                 Focus on substantive content changes (added/changed content, new sections, added links), ignore advertisements irrelevant to the main page content.
-                Keep the summary short and actionable (a few bullet points). NEVER mention formatting changes and 
+                Keep the summary short and actionable (a few bullet points). NEVER mention formatting changes and
                 ignore removed content unless it is critical information. Never report changed ticket counts or removed events.
                 If there are no meaningful changes, return the single word: NO_CHANGE.
                 Today is the {{current_date}} - do not mention removed information about past events or sold out events.
@@ -152,6 +161,14 @@ public class CheckWebPagesForChangesWithDiffs {
                 """)
         String describeDifferences(@V("diff") String unifiedDiff, @V("url") String url,
                                    @V("current_date") String currentDate);
+    }
+
+    private interface Cleanup {
+        @SystemMessage("Your job is to print the user's text but remove minor changes like numbers of available tickets," +
+                "presentation changes like hanged headlines and links. Only changes of the content, such as new events," +
+                "changed events, new available information should be kept.")
+        @UserMessage("{{text}}")
+        String cleanUp(@V("text") String text);
     }
 
 }
