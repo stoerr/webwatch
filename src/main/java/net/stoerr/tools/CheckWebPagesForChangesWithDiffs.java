@@ -79,6 +79,7 @@ public class CheckWebPagesForChangesWithDiffs {
         }
 
         StringBuilder diffs = new StringBuilder();
+        String today = java.time.LocalDate.now().toString();
 
         for (PageConfig pc : configs) {
             if (pc == null || pc.url == null || pc.url.isBlank()) {
@@ -113,7 +114,6 @@ public class CheckWebPagesForChangesWithDiffs {
                     Patch<String> patch = DiffUtils.diff(originalLines, revisedLines);
                     List<String> unified = UnifiedDiffUtils.generateUnifiedDiff("previous.md", "current.md", originalLines, patch, 3);
                     String unifiedDiff = String.join("\n", unified);
-                    String today = java.time.LocalDate.now().toString();
                     String diffSummary = extractor.describeDifferences(unifiedDiff, pc.url, today);
                     if (diffSummary != null && !"NO_CHANGE".equals(diffSummary.trim())) {
                         diffs.append("\n\n").append(pc.url).append("\n").append(diffSummary).append("\n");
@@ -127,7 +127,7 @@ public class CheckWebPagesForChangesWithDiffs {
             }
         }
 
-        String cleaned = cleanup.cleanUp(diffs.toString());
+        String cleaned = cleanup.cleanUp(diffs.toString(), today);
         System.out.println(cleaned);
     }
 
@@ -153,6 +153,7 @@ public class CheckWebPagesForChangesWithDiffs {
                 Focus on substantive content changes (added/changed content, new sections, added links), ignore advertisements irrelevant to the main page content.
                 Keep the summary short and actionable (a few bullet points). NEVER mention formatting changes and
                 ignore removed content unless it is critical information. Never report changed ticket counts or removed events.
+                Focus on changes / new information about what is described by the page, not on changes in the choosen presentation in the page.
                 If there are no meaningful changes, return the single word: NO_CHANGE.
                 Today is the {{current_date}} - do not mention removed information about past events or sold out events.
                 """)
@@ -164,11 +165,16 @@ public class CheckWebPagesForChangesWithDiffs {
     }
 
     private interface Cleanup {
-        @SystemMessage("Your job is to print the user's text but remove minor changes like numbers of available tickets," +
-                "presentation changes like hanged headlines and links. Only changes of the content, such as new events," +
-                "changed events, new available information should be kept.")
+        @SystemMessage("""
+                Your job is to print the user's text but remove minor changes like numbers of available tickets,
+                presentation changes like hanged headlines and links. Only changes of the content, such as new events
+                changed events, new available information should be kept.
+                Focus on changes / new information about what is described by the page, not on changes in the choosen p
+                resentation in the page. You can formulate the cleaned up text more concisely to reach that goal.
+                Today is the {{current_date}} - do not mention removed information about past events or sold out events.
+                """)
         @UserMessage("{{text}}")
-        String cleanUp(@V("text") String text);
+        String cleanUp(@V("text") String text, @V("current_date") String currentDate);
     }
 
 }
