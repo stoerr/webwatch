@@ -171,6 +171,7 @@ public class CheckWebPagesForChangesWithDiffs {
                 changed events, new available information should be kept.
                 Focus on changes / new information about what is described by the page, not on changes in the choosen p
                 resentation in the page. You can formulate the cleaned up text more concisely to reach that goal.
+                If there are only irrelevant changes for a web page then remove the section for that page entirely.
                 Today is the {{current_date}} - do not mention removed information about past events or sold out events.
                 """)
         @UserMessage("{{text}}")
