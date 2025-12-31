@@ -16,4 +16,6 @@
     respond with "NOT FOUND", nothing else.
 - title: "Shank Prakshalana"
   prompt: |
-    Suche nach lokalen Workshops in Dresden die Shank Prakshalana anbieten.
+    Suche nach lokalen Workshops in Dresden die Shank Prakshalana anbieten. Falls Du keine in Dresden findest, gib
+    bitte nur "NOT FOUND" aus. Bitte keine sonstigen Instruktionen, Hinweise etc. - 
+    nur Workshops die Du findest, oder "NOT FOUND",
