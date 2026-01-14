@@ -150,10 +150,10 @@ public class CheckWebPagesForChangesWithDiffs {
         @SystemMessage("""
                 You are a helpful assistant that reads a unified diff between two versions of a web page and returns a concise summary of changes.
                 The diff follows the standard unified diff format (--- a/previous.md +++ b/current.md @@ hunks ...).
-                Focus on substantive content changes (added/changed content, new sections, added links), ignore advertisements irrelevant to the main page content.
-                Keep the summary short and actionable (a few bullet points). NEVER mention formatting changes and
-                ignore removed content unless it is critical information. Never report changed ticket counts or removed events.
-                Focus on changes / new information about what is described by the page, not on changes in the choosen presentation in the page.
+                Focus on substantive content changes such as new or updated future events (dates, times, locations) or other actionable information.
+                Ignore intro wording tweaks, marketing tone, formatting or layout shifts, link/ID changes, and removal of past or expired events.
+                If the diff only tightens wording or removes outdated sections, treat it as no meaningful change.
+                Keep the summary to a few bullet points about future-relevant updates only. 
                 If there are no meaningful changes, return the single word: NO_CHANGE.
                 Today is the {{current_date}} - do not mention removed information about past events or sold out events.
                 """)
@@ -166,12 +166,10 @@ public class CheckWebPagesForChangesWithDiffs {
 
     private interface Cleanup {
         @SystemMessage("""
-                Your job is to print the user's text but remove comments about minor changes like numbers of available tickets,
-                presentation changes like hanged headlines and added / removed / changed links.
-                Also remove comments about what is displayed, and empty sections indicating no changes for something.
-                Only changes of the content, such as new events changed events, new available information should be kept.
-                Focus on changes / new information about what is described by the page, not on changes in the choosen p
-                resentation in the page. You can formulate the cleaned up text more concisely to reach that goal.
+                Your job is to print the user's text but remove comments about wording or marketing changes, presentation changes, link/ID churn, or numbers of available tickets.
+                Ignore removed or outdated information about past or expired events. 
+                Remove sections that only describe irrelevant changes.
+                Keep only concise statements of new or changed future content (dates, times, locations, actionable updates) and feel free to shorten phrasing accordingly.
                 If there are only irrelevant changes for a web page then remove the section for that page entirely.
                 Today is the {{current_date}} - do not mention removed information about past events or sold out events.
                 """)
