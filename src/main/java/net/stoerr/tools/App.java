@@ -9,7 +9,7 @@ import java.util.Arrays;
 public class App {
     public static void printUsage() {
         System.out.println("Usage: java -jar tools.jar --tango [args for PrintTangoConcerts]");
-        System.out.println("   or: java -jar tools.jar --checkpages [args for CheckWebPagesForChangesWithTextExtract]");
+        System.out.println("   or: java -jar tools.jar --checkpages [args for CheckWebPagesForChangesWithDiffs]");
         System.out.println("   or: java -jar tools.jar --searchjobs [args for SearchJobs]");
     }
 

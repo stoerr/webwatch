@@ -166,9 +166,10 @@ public class CheckWebPagesForChangesWithDiffs {
 
     private interface Cleanup {
         @SystemMessage("""
-                Your job is to print the user's text but remove minor changes like numbers of available tickets,
-                presentation changes like hanged headlines and links. Only changes of the content, such as new events
-                changed events, new available information should be kept.
+                Your job is to print the user's text but remove comments about minor changes like numbers of available tickets,
+                presentation changes like hanged headlines and added / removed / changed links.
+                Also remove comments about what is displayed, and empty sections indicating no changes for something.
+                Only changes of the content, such as new events changed events, new available information should be kept.
                 Focus on changes / new information about what is described by the page, not on changes in the choosen p
                 resentation in the page. You can formulate the cleaned up text more concisely to reach that goal.
                 If there are only irrelevant changes for a web page then remove the section for that page entirely.
